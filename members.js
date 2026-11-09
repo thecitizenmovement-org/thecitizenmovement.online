@@ -74,7 +74,7 @@
         }, 6000);
       }
     }
-    render();
+    try { render(); } catch (e) { /* panel render failed — links must still update */ }
     updateFoundryLinks();
   }
 
@@ -102,6 +102,8 @@
         '<p class="muted small" style="margin-top:14px"><a href="https://thecitizenmovement.com/info-member-profile.html">Your member profile — optional information</a><br><a href="https://thecitizenmovement.store/">Add your personal information (optional)</a> — saved only if you choose to, in the store.</p>';
         var egg=$('member-profile-egg'); if(egg) egg.hidden=false;
        // Member music magic: post-login only, option-checked only, slow fade to a capped level.
+       // Wrapped so a music/audio failure can never break sign-in or the Foundry link.
+      try {
       (function(){
         var opt=$('member-music-opt'); if(!opt) return;
         opt.checked = localStorage.getItem('cm_music_opt')==='1';
@@ -134,10 +136,15 @@
         // if play is blocked, the Play button below appears for one tap.
         if(opt.checked){
           audio.src=tracks[0]; audio.volume=0;
-          var pr=audio.play(); if(pr && pr.catch) pr.catch(function(){ var b=$('member-music-play'); if(b){ b.style.display='inline-block'; b.addEventListener('click', function(){ playTrack(0); b.style.display='none'; }); } });
-          else fadeTo(0.6, 0.03);
+          var pr=audio.play();
+          if(pr && pr.then){
+            pr.then(function(){ fadeTo(0.6, 0.03); }).catch(function(){ var b=$('member-music-play'); if(b){ b.style.display='inline-block'; b.addEventListener('click', function(){ playTrack(0); b.style.display='none'; }); } });
+          } else {
+            fadeTo(0.6, 0.03);
+          }
         }
       })();
+      } catch (e) { /* music is optional — never break the page */ }
       $('member-signout').addEventListener('click', function () {
         client.auth.signOut().then(function () {
           session = null; member = null; render(); refreshCount(); say('Signed out.');
