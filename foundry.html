@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>The Foundry — Citizen OSINT Toolkit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0d2140;--ink:#f7edcf;--gold:#c6a45d;--bright:#f1cf7a;--muted:#d8c79e;--panel:rgba(7,20,42,.88);--line:rgba(214,181,106,.58)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--navy);color:var(--ink);font-family:"Libre Franklin",system-ui,sans-serif;line-height:1.55}
+header.top{background:#0d2140;border-bottom:1px solid var(--line);padding:14px 22px}
+nav.primary{display:flex;gap:26px;align-items:center;max-width:1000px;margin:0 auto}
+nav.primary a{color:var(--ink);text-decoration:none;font-weight:600}
+nav.primary a.brand{font-family:"Playfair Display",Georgia,serif;font-size:20px;color:var(--bright)}
+main{max-width:1000px;margin:0 auto;padding:28px 22px 48px}
+h1{font-family:"Playfair Display",Georgia,serif;font-size:32px;color:var(--bright);margin:6px 0 8px}
+.sub{color:var(--muted);margin:0 0 20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px;margin:0 0 20px;position:relative}
+.panel::before,.panel::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--gold);pointer-events:none}
+.panel::before{top:-2px;left:-2px;border-right:none;border-bottom:none}
+.panel::after{bottom:-2px;right:-2px;border-left:none;border-top:none}
+.panel h2,.panel h3{font-family:"Playfair Display",Georgia,serif;color:var(--bright);margin:0 0 10px}
+.panel p{line-height:1.6;margin:0 0 10px}
+.panel a{color:var(--bright)}
+.field{width:100%;padding:12px;border:1px solid var(--line);background:rgba(0,0,0,.26);color:var(--ink);border-radius:6px;margin:6px 0 10px;font:inherit}
+label{display:block;margin:10px 0 4px;color:var(--muted);font-size:.9rem}
+.auth-tabs{display:flex;gap:8px;margin:12px 0}
+.auth-tabs button{flex:1;min-height:44px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;cursor:pointer;border-radius:6px}
+.auth-tabs button.active{background:rgba(198,164,93,.16);color:var(--bright);border-color:var(--bright)}
+.btn{display:inline-block;min-height:48px;padding:12px 20px;border:1px solid var(--bright);background:linear-gradient(180deg,#d6ae52,#9e741c);color:#0b1830;text-decoration:none;font-weight:800;cursor:pointer;border-radius:6px;margin-top:14px}
+.btn.ghost{background:transparent;color:var(--bright)}
+.member-count{margin:4px 0 6px;color:var(--muted)}.member-count strong{color:var(--bright);font-size:1.3rem}
+.member-since{margin:8px 0;color:var(--muted)}.member-since strong{color:var(--bright)}
+.muted.small{font-size:.85rem;color:var(--muted)}
+.coming{min-height:24px;margin:12px 0 0;color:var(--bright);font-size:.9rem}
+.toast{position:fixed;z-index:99;left:50%;bottom:22px;transform:translate(-50%,130%);padding:13px 18px;background:#f1cf7a;color:#071227;border:1px solid #fff1bd;font-weight:700;transition:transform .25s}
+.toast.show{transform:translate(-50%,0)}
+#tool-frame{width:100%;height:82vh;border:1px solid var(--line);border-radius:8px;background:#0b0f14}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.meta button{background:transparent;border:1px solid var(--line);color:var(--bright);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700}
+</style>
+</head>
+<body>
+<header class="top"><nav class="primary">
+<a class="brand" href="./">The United Citizens of America</a>
+<a href="./">Home</a><a href="https://thecitizenmovement.org">.org</a><a href="https://thecitizenmovement.com">.com</a><a href="https://thecitizenmovement.store">Store</a>
+</nav></header>
+<main>
+<p id="gate-loading" class="sub">Loading…</p>
+
+<div id="gate-signin" hidden>
+<div class="panel login-panel" id="member-panel"><div id="member-auth-box"><h3>Member Sign In</h3><p class="coming">Loading member system…</p></div></div>
+<p class="sub">Sign in to continue. Membership is free.</p>
+</div>
+
+<div id="foundry-egg" hidden>
+<h1>The Foundry</h1>
+<p class="sub">Citizen OSINT Toolkit — for the Founder and members who own the toolkit.</p>
+<div class="meta"><span id="foundry-who"></span><span><a id="foundry-open" href="#" target="_blank" rel="noopener">Open the toolkit in a new tab ↗</a> &nbsp; <button id="foundry-signout" type="button">Sign out</button></span></div>
+<iframe id="tool-frame" title="Citizen OSINT Toolkit" hidden></iframe>
+<p class="sub" id="foundry-err" hidden>The toolkit file could not be loaded right now. Try signing out and back in.</p>
+</div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script src="members.js"></script>
+<script>
+(function(){
+  'use strict';
+  var SUPABASE_URL='https://jesrbqrwbacuirwxbkis.supabase.co';
+  var SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc';
+  var FOUNDER_EMAIL='thecitizenmovement@gmail.com';
+  var BUCKET='member-documents';
+  var TOOLKIT_PATH='foundry/osint-toolkit-v1.4.html';
+  var subscribed=false;
+  function $(id){return document.getElementById(id);}
+  function show(el){ if(el) el.hidden=false; }
+  function hide(el){ if(el) el.hidden=true; }
+  async function run(){
+    if(!window.supabase){ $('gate-loading').textContent='The member system could not load. Check your connection and refresh.'; return; }
+    var client=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if(!subscribed){
+      subscribed=true;
+      client.auth.onAuthStateChange(function(){ run(); });
+    }
+    var res;
+    if(window.CitizenMembers && window.CitizenMembers.checkFoundryAccess){
+      res=await window.CitizenMembers.checkFoundryAccess();
+    } else {
+      try{
+        var s=await client.auth.getSession();
+        var sess=s.data.session||null;
+        if(!sess){ res={signedIn:false,entitled:false,email:null}; }
+        else{
+          var em=(sess.user.email||'').toLowerCase();
+          res={signedIn:true,entitled:em===FOUNDER_EMAIL,email:em};
+        }
+      }catch(e){ res={signedIn:false,entitled:false,email:null}; }
+    }
+    hide($('gate-loading'));
+    if(!res.signedIn){ hide($('foundry-egg')); show($('gate-signin')); return; }
+    if(!res.entitled){ window.location.replace('./'); return; }
+    hide($('gate-signin'));
+    show($('foundry-egg'));
+    $('foundry-who').textContent='Signed in as '+(res.email||'');
+    var so=$('foundry-signout');
+    if(so && !so.__bound){
+      so.__bound=true;
+      so.addEventListener('click', function(){ client.auth.signOut().then(function(){ window.location.reload(); }); });
+    }
+    var fr=$('tool-frame');
+    if(fr.src) return;
+    var r=await client.storage.from(BUCKET).createSignedUrl(TOOLKIT_PATH, 3600);
+    if(r.error || !r.data || !r.data.signedUrl){ show($('foundry-err')); return; }
+    fr.src=r.data.signedUrl;
+    show(fr);
+    var open=$('foundry-open');
+    if(open){ open.href=r.data.signedUrl; }
+  }
+  if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', run); } else { run(); }
+})();
+</script>
+</body>
+</html>

@@ -29,14 +29,28 @@ h1{font-family:'Playfair Display',serif;font-size:38px;color:var(--bright);margi
 .cta a{display:inline-block;background:var(--gold);color:#0d2140;font-weight:700;text-decoration:none;padding:12px 26px;border-radius:6px;font-size:16px;}
 footer{max-width:1000px;margin:0 auto;padding:0 22px 34px;color:var(--muted);font-size:13px;line-height:1.6;}
 footer a{color:var(--bright);}
+
+.login-panel label{display:block;margin:12px 0 6px;color:var(--muted);font-size:.85rem}
+.field{width:100%;padding:12px;border:1px solid var(--line);background:rgba(0,0,0,.26);color:var(--ink);border-radius:6px;margin:6px 0 10px;font:inherit}
+.auth-tabs{display:flex;gap:8px;margin:12px 0 16px}.auth-tabs button{flex:1;min-height:44px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;cursor:pointer;border-radius:6px}.auth-tabs button.active{background:rgba(198,164,93,.16);color:var(--bright);border-color:var(--bright)}
+.member-count{margin:4px 0 6px;color:var(--muted)}.member-count strong{color:var(--bright);font-size:1.3rem}
+.member-since{margin:8px 0;color:var(--muted)}.member-since strong{color:var(--bright)}
+.muted.small{font-size:.85rem;color:var(--muted)}
+.coming{min-height:24px;margin:12px 0 0;color:var(--bright);font-size:.9rem}
+#member-auth-box .btn{display:inline-block;min-height:48px;padding:12px 20px;border:1px solid var(--bright);background:linear-gradient(180deg,#d6ae52,#9e741c);color:#0b1830;text-decoration:none;font-weight:800;cursor:pointer;border-radius:6px;margin-top:14px}
+#member-auth-box .btn.ghost{background:transparent;color:var(--bright)}
+.toast{position:fixed;z-index:99;left:50%;bottom:22px;transform:translate(-50%,130%);padding:13px 18px;background:#f1cf7a;color:#071227;border:1px solid #fff1bd;font-weight:700;transition:transform .25s}
+.toast.show{transform:translate(-50%,0)}
 </style>
 </head>
 <body>
 <header class="top"><nav class="primary">
 <a class="brand" href="/">The United Citizens of America</a>
-<a href="/">Home</a><a href="/legal-team.html">Legal Team</a><a href="https://thecitizenmovement.org">.org</a><a href="https://thecitizenmovement.com">.com</a><a href="https://thecitizenmovement.store">Store</a>
+<a href="/">Home</a><a href="/legal-team.html">Legal Team</a><a href="/foundry.html" class="foundry-link" hidden>Foundry</a><a href="https://thecitizenmovement.org">.org</a><a href="https://thecitizenmovement.com">.com</a><a href="https://thecitizenmovement.store">Store</a>
 </nav></header>
 <main>
+<div class="panel login-panel" id="member-panel"><div id="member-auth-box"><h3>Member Sign In</h3><p class="coming">Loading member system…</p></div></div>
+<div class="panel" id="member-profile-egg" hidden><h3>Your member profile — optional information</h3><p class="muted">Add your personal information (optional) — saved only if you choose to, in the store.</p><p><a href="https://thecitizenmovement.com/info-member-profile.html">Your member profile — optional information</a></p><p><a href="https://thecitizenmovement.store/">Add your personal information (optional)</a></p></div>
 <h1>The United Citizens of America</h1>
 <p class="sub">A non-partisan citizens&rsquo; movement, founded July 4, 2026. Citizens, not states.</p>
 <div class="panel">
@@ -56,5 +70,8 @@ footer a{color:var(--bright);}
 Contact: <a href="mailto:thecitizenmovement@gmail.com">thecitizenmovement@gmail.com</a> &middot; Phone available upon request<br>
 <a href="https://thecitizenmovement.org">thecitizenmovement.org</a> &middot; <a href="https://thecitizenmovement.com">thecitizenmovement.com</a> &middot; <a href="https://thecitizenmovement.store">thecitizenmovement.store</a>
 </footer>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script src="members.js"></script>
 </body>
 </html>
