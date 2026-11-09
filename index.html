@@ -39,6 +39,15 @@ footer a{color:var(--bright);}
 .coming{min-height:24px;margin:12px 0 0;color:var(--bright);font-size:.9rem}
 #member-auth-box .btn{display:inline-block;min-height:48px;padding:12px 20px;border:1px solid var(--bright);background:linear-gradient(180deg,#d6ae52,#9e741c);color:#0b1830;text-decoration:none;font-weight:800;cursor:pointer;border-radius:6px;margin-top:14px}
 #member-auth-box .btn.ghost{background:transparent;color:var(--bright)}
+.wrap{width:min(1180px,calc(100% - 40px));margin:auto}
+.ucm-prefs{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.ucm-prefs h4{color:var(--bright);margin:0 0 10px;font-size:1rem}
+.ucm-pref-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;color:var(--ink);font-size:.95rem}
+.ucm-toggle{position:relative;width:46px;height:26px;border-radius:13px;border:1px solid var(--gold);background:rgba(255,255,255,.08);cursor:pointer;flex:none;padding:0}
+.ucm-toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#8a93a5;transition:left .15s ease,background .15s ease}
+.ucm-toggle[aria-checked="true"]{background:rgba(198,164,93,.25)}
+.ucm-toggle[aria-checked="true"]::after{left:22px;background:var(--gold)}
+.ucm-prefs .note{font-size:.8rem;color:var(--muted)}
 .toast{position:fixed;z-index:99;left:50%;bottom:22px;transform:translate(-50%,130%);padding:13px 18px;background:#f1cf7a;color:#071227;border:1px solid #fff1bd;font-weight:700;transition:transform .25s}
 .toast.show{transform:translate(-50%,0)}
 </style>
@@ -49,8 +58,10 @@ footer a{color:var(--bright);}
 <a href="/">Home</a><a href="/legal-team.html">Legal Team</a><a href="/foundry.html" class="foundry-link" hidden>Foundry</a><a href="https://thecitizenmovement.org">.org</a><a href="https://thecitizenmovement.com">.com</a><a href="https://thecitizenmovement.store">Store</a>
 </nav></header>
 <main>
-<div class="panel login-panel" id="member-panel"><div id="member-auth-box"><h3>Member Sign In</h3><p class="coming">Loading member system…</p></div></div>
+<div class="wrap" id="member-top" style="padding-top:36px">
+<div class="panel login-panel" id="member-panel"><div id="member-auth-box"><h3>Member Sign In</h3><p class="coming">Loading member system…</p></div> <div class="ucm-prefs" aria-label="Member preferences"><h4>Preferences</h4><div class="ucm-pref-row"><span>Card sounds</span><button class="ucm-toggle" id="ucm-pref-sound" role="switch" aria-checked="true" aria-label="Card sounds"></button></div><div class="ucm-pref-row"><span>Card motion effects</span><button class="ucm-toggle" id="ucm-pref-fx" role="switch" aria-checked="true" aria-label="Card motion effects"></button></div><p class="note">Saved on this device. Account-wide sync arrives with the member system.</p></div></div>
 <div class="panel" id="member-profile-egg" hidden><h3>Your member profile — optional information</h3><p class="muted">Add your personal information (optional) — saved only if you choose to, in the store.</p><p><a href="https://thecitizenmovement.com/info-member-profile.html">Your member profile — optional information</a></p><p><a href="https://thecitizenmovement.store/">Add your personal information (optional)</a></p></div>
+</div>
 <h1>The United Citizens of America</h1>
 <p class="sub">A non-partisan citizens&rsquo; movement, founded July 4, 2026. Citizens, not states.</p>
 <div class="panel">
@@ -73,5 +84,5 @@ Contact: <a href="mailto:thecitizenmovement@gmail.com">thecitizenmovement@gmail.
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
 <script src="members.js"></script>
-</body>
+<script> (function(){var K='ucm-prefs-v1',p={cardSound:true,cardFx:true};try{var s=JSON.parse(localStorage.getItem(K)||'{}');for(var k in p){if(typeof s[k]==='boolean')p[k]=s[k];}}catch(e){} function save(){try{localStorage.setItem(K,JSON.stringify(p));}catch(e){}} if(!p.cardFx)document.body.classList.add('no-fx'); var ac=null;function blip(){if(!p.cardSound)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();var o=ac.createOscillator(),g=ac.createGain();o.type='triangle';o.frequency.value=660;g.gain.setValueAtTime(.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.09);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.1);}catch(e){}} function flash(el){el.classList.add('tapped');setTimeout(function(){el.classList.remove('tapped');},320);} document.addEventListener('click',function(e){if(!e.target.closest)return;var link=e.target.closest('a.panel-link'),card=e.target.closest('article.panel.file-card');if(!link&&!card)return;blip();if(link){flash(link);}else{Array.prototype.forEach.call(document.querySelectorAll('article.panel.file-card.selected'),function(c){if(c!==card)c.classList.remove('selected');});card.classList.toggle('selected');}},true); function bind(id,key,fn){var t=document.getElementById(id);if(!t)return;t.setAttribute('aria-checked',p[key]?'true':'false');t.addEventListener('click',function(ev){ev.stopPropagation();p[key]=!p[key];t.setAttribute('aria-checked',p[key]?'true':'false');save();if(fn)fn();blip();});} bind('ucm-pref-sound','cardSound');bind('ucm-pref-fx','cardFx',function(){document.body.classList.toggle('no-fx',!p.cardFx);}); })(); </script> </body>
 </html>
