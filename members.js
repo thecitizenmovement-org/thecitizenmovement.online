@@ -7,6 +7,16 @@
   var SUPABASE_URL = 'https://jesrbqrwbacuirwxbkis.supabase.co';
   var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc';
   var FOUNDER_EMAIL = 'thecitizenmovement@gmail.com';
+  var SCAN_BACKEND_URL = 'https://scam-intel-backend.onrender.com';
+  /* Wake the Render backend on sign-in. The free tier sleeps after 15 min
+     idle and takes ~50s to wake; a no-cors fire-and-forget ping to /health
+     starts the wake-up so the first scan does not hit a cold start. The
+     response is opaque by design — we only need the request to reach Render. */
+  function wakeBackend(){
+    try{
+      fetch(SCAN_BACKEND_URL + '/health', { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+    }catch(e){}
+  }
 
   function $(id) { return document.getElementById(id); }
   function esc(s) {
@@ -65,6 +75,7 @@
         if (!m.error) member = m.data;
       }
     } catch (e) { session = null; member = null; }
+    if (session) { wakeBackend(); }
     if (isRecoveryHash()) {
       if (session) { recoveryState = 'ready'; }
       else if (recoveryState !== 'expired') {
