@@ -1,9 +1,11 @@
 # Scam Intel API — Phase 1 backend (Render, free tier)
 # Python 3.12 slim. Installs Python deps from requirements.txt, downloads
-# PhoneInfoga v2.11.0 (same version as the local tools/phoneinfoga binary,
-# verified by SHA256 — the binary itself is NOT committed to the repo, because
-# the GitHub MCP push path cannot carry binary files correctly).
-# Maigret comes from requirements.txt (maigret==0.6.6).
+# PhoneInfoga v2.11.0 and subfinder v2.17.0 (same versions as the local
+# tools/ binaries, verified by SHA256 — the binaries themselves are NOT
+# committed to the repo, because the GitHub MCP push path cannot carry
+# binary files correctly).
+# Maigret and user-scanner come from requirements.txt.
+# theHarvester is NOT installed (blocked — see app.py docstring).
 # The service is started with the uvicorn CLI (not `python app.py`), so it
 # binds 0.0.0.0:$PORT as Render requires. app.py's __main__ block binds
 # 127.0.0.1 only and is bypassed by the CLI start command.
@@ -15,10 +17,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System tools needed at build time (curl for the PhoneInfoga download,
-# ca-certificates for HTTPS). No compiler needed: all Python deps ship wheels.
+# System tools needed at build time (curl for the binary downloads,
+# ca-certificates for HTTPS, unzip for the subfinder zip). No compiler
+# needed: all Python deps ship wheels.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl ca-certificates \
+    && apt-get install -y --no-install-recommends curl ca-certificates unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Python dependencies first (better layer caching).
@@ -38,18 +41,41 @@ RUN mkdir -p /app/tools \
     && rm /tmp/phoneinfoga.tar.gz \
     && /app/tools/phoneinfoga version
 
+# subfinder v2.17.0 — Linux x86_64, from the official release.
+# SHA256 pinned from the v2.17.0 release checksums file (verified Nov 10,
+# 2026: a39c3e5c7a26ef3c430915c4d6cbf7716a00f26769a75e9405aba796142eba37).
+# Keyless sources only; no API keys configured.
+ARG SUBFINDER_VERSION=2.17.0
+ARG SUBFINDER_SHA256=a39c3e5c7a26ef3c430915c4d6cbf7716a00f26769a75e9405aba796142eba37
+RUN curl -sSL "https://github.com/projectdiscovery/subfinder/releases/download/v${SUBFINDER_VERSION}/subfinder_${SUBFINDER_VERSION}_linux_amd64.zip" -o /tmp/subfinder.zip \
+    && echo "${SUBFINDER_SHA256}  /tmp/subfinder.zip" | sha256sum -c - \
+    && unzip -o -q /tmp/subfinder.zip -d /tmp/subfinder_extract subfinder \
+    && mv /tmp/subfinder_extract/subfinder /app/tools/subfinder \
+    && chmod +x /app/tools/subfinder \
+    && rm -rf /tmp/subfinder.zip /tmp/subfinder_extract \
+    && /app/tools/subfinder -version
+
 # Application code.
 COPY app.py ./
 COPY API_SPEC.md README.md ./
 
 # Defaults (overridden by Render environment variables).
-# PHONEINFOGA_BIN points at the binary downloaded above.
+# PHONEINFOGA_BIN and SUBFINDER_BIN point at the binaries downloaded above.
 # MAIGRET_BIN is the `maigret` console script from the pip install.
+# USER_SCANNER_BIN is the `user-scanner` console script from the pip install.
+# NUMVERIFY_API_KEY is set in the Render dashboard (free apilayer key);
+# when absent, PhoneInfoga's numverify scanner is SKIP.
 ENV PHONEINFOGA_BIN=/app/tools/phoneinfoga \
+    SUBFINDER_BIN=/app/tools/subfinder \
     MAIGRET_BIN=maigret \
+    USER_SCANNER_BIN=user-scanner \
     MAIGRET_TOP_SITES=50 \
     MAIGRET_TIMEOUT=180 \
     PHONEINFOGA_TIMEOUT=90 \
+    USER_SCANNER_TIMEOUT=240 \
+    SUBFINDER_TIMEOUT=90 \
+    SUBFINDER_MAX_RESULTS=500 \
+    SUBFINDER_EXCLUDE_SOURCES=anubis,crtname,subdomaincenter \
     HTTP_TIMEOUT=15 \
     MAX_CONCURRENT_SCANS=3
 

@@ -77,6 +77,7 @@ Response `200`:
       "number_type": "FIXED_LINE_OR_MOBILE"
     },
     "phoneinfoga": { "ran": true, "output": "..." },
+    "numverify": { "enabled": true, "status": "ran", "checked_at": "..." },
     "known_scam": false,
     "verified_scam": null
   },
@@ -90,13 +91,19 @@ Notes:
   API keys are configured. Live carrier/VOIP enrichment needs API keys
   (not configured). The `phonenumbers` parse is the reliable local signal.
 - `valid: false` for 555-01xx numbers is expected — they are fictional.
+- `result.numverify`: when `NUMVERIFY_API_KEY` is set (free apilayer
+  key), PhoneInfoga's numverify scanner returns real carrier and line
+  type (mobile / landline / VoIP). When the key is absent the entry is
+  `{ "enabled": false, "status": "SKIP", ... }` — a skip, never a fake
+  clean. The key is never returned in the response.
 
 Errors: `400` invalid phone number. `401` bad/missing token.
 
 ### POST /scan/email
 
-Email check: format validation + domain MX/A via DNS-over-HTTPS + known-scam
-lookup (email, then its domain).
+Email check: format validation + domain MX/A via DNS-over-HTTPS +
+user-scanner registration check (210+ sites) + known-scam lookup
+(email, then its domain).
 
 Request:
 ```json
@@ -108,14 +115,33 @@ Response `200` — same shape as `/scan/phone`, with:
 - `result.domain_mx`: MX records for the domain (DoH).
 - `result.domain_a`: A records for the domain (DoH).
 - `result.domain_has_mail`: boolean.
+- `result.user_scanner`: `{ "tool": "user-scanner", "status": "FOUND" |
+  "NONE" | "SKIP" | "ERR", "checked_at": "<UTC ISO>", "registered": [
+  { "site", "category", "url", "profile", "login" } ], "registered_count",
+  "not_registered_count", "error_count", "skipped_count", "total_modules",
+  "errors": [ { "site", "reason" } ] }`. `status` is FOUND when the
+  email is registered on at least one site, NONE when at least one
+  module returned a definitive "not registered" and none registered,
+  ERR when no module gave a definitive answer (or the tool failed), and
+  SKIP when user-scanner is not installed. A module that errors is
+  recorded as an error, never as "not registered". user-scanner is
+  NEVER run with `--hudson` (infostealer corpus — prohibited).
 - `result.verified_scam_domain`: the domain's row in `verified_scams`, if any.
+
+Notes:
+- The user-scanner step takes ~80 s (220 modules). Timeout is 240 s
+  (`USER_SCANNER_TIMEOUT`).
+- user-scanner is used for email only. Its full username run (2,510+
+  sites) takes >4 min and is too slow for a synchronous call, so
+  Maigret covers username.
 
 Errors: `400` invalid email address. `401` bad/missing token.
 
 ### POST /scan/domain
 
 Domain check: DNS (DoH A/MX/TXT) + RDAP (registrar/status/creation) +
-known-scam lookup.
+subfinder subdomain enumeration + crt.sh certificate-transparency
+subdomains + known-scam lookup.
 
 Request:
 ```json
@@ -127,12 +153,27 @@ Response `200` — same shape, with:
 - `result.dns_a`, `result.dns_mx`, `result.dns_txt`.
 - `result.rdap`: `{ "registrar", "status", "creation_date",
   "expiration_date", "last_changed", "handle" }` (null when RDAP fails).
+- `result.subfinder`: `{ "tool": "subfinder", "status": "FOUND" | "NONE" |
+  "SKIP" | "ERR", "checked_at": "<UTC ISO>", "subdomains": [ ... ],
+  "total_found", "truncated" }`. Subfinder runs keyless sources only;
+  keyed sources are reported as skipped by subfinder, never as "no
+  subdomains". Stored subdomains are capped at 500
+  (`SUBFINDER_MAX_RESULTS`); `total_found` is the full count.
+- `result.crtsh`: `{ "tool": "crtsh", "source": "https://crt.sh",
+  "status": "FOUND" | "NONE" | "ERR", "checked_at": "<UTC ISO>",
+  "subdomains": [ ... ], "total_found" }`. A direct certificate-
+  transparency query (one HTTPS call), a second subdomain source
+  alongside subfinder.
+- `result.subdomains`: the merged union of subfinder + crt.sh
+  subdomains (sorted, deduplicated). `result.subdomain_count` is its
+  length.
 
 Notes:
 - DNS uses DNS-over-HTTPS (Google, then Cloudflare). The local system
   resolver in this VM returns synthetic proxy addresses, so DoH is used.
 - Registrar data uses RDAP over HTTPS (rdap.org). Direct WHOIS (port 43)
   is blocked in this environment.
+- theHarvester is NOT used (blocked — see README.md).
 
 Errors: `400` invalid domain. `401` bad/missing token.
 
@@ -229,9 +270,9 @@ Errors: `401` bad/missing token. `422` missing/empty `target` query param.
 - Max 3 concurrent scans (`MAX_CONCURRENT_SCANS`). Extra requests wait
   for a slot. There is no per-user quota yet — that arrives with Phase 3
   (Stripe + `usage_quotas`).
-- Per-tool timeouts: PhoneInfoga 90 s, Maigret 180 s, HTTP (DoH/RDAP/
-  Supabase) 15 s. A tool timeout is recorded in the scan `result`, not
-  hidden.
+- Per-tool timeouts: PhoneInfoga 90 s, Maigret 180 s, user-scanner 240 s,
+  subfinder 90 s, HTTP (DoH/RDAP/Supabase/crt.sh) 15 s. A tool timeout is
+  recorded in the scan `result`, not hidden.
 
 ## What is NOT in Phase 1
 

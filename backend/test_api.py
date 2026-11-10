@@ -101,6 +101,18 @@ def main():
     check("phone scan known_scam false", body.get("known_scam") is False)
     check("phone scan has parsed result",
           isinstance(body.get("result", {}).get("parsed"), dict))
+    # numverify step: present with a valid status. Without a key it must
+    # be SKIP (never a fake clean); with a key it must be ran/ERR.
+    nv = body.get("result", {}).get("numverify", {})
+    check("phone scan numverify present", bool(nv),
+          f"keys={list(body.get('result', {}).keys())}")
+    check("phone scan numverify status valid",
+          nv.get("status") in ("SKIP", "ran", "ERR"),
+          f"status={nv.get('status')} enabled={nv.get('enabled')}")
+    if not nv.get("enabled"):
+        check("phone scan numverify SKIP without key",
+              nv.get("status") == "SKIP",
+              f"status={nv.get('status')}")
 
     # Email.
     r = client.post("/scan/email", json={"target": "test@example.com"},
@@ -112,6 +124,24 @@ def main():
           f"scan_id={body.get('scan_id')}")
     check("email scan domain_mx present",
           "domain_mx" in body.get("result", {}))
+    # user-scanner step (email registration check, 210+ sites).
+    us = body.get("result", {}).get("user_scanner", {})
+    check("email scan user_scanner present", bool(us),
+          f"keys={list(body.get('result', {}).keys())}")
+    check("email scan user_scanner status valid",
+          us.get("status") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"status={us.get('status')}")
+    check("email scan user_scanner has counts",
+          "registered_count" in us and "total_modules" in us,
+          f"registered={us.get('registered_count')} total={us.get('total_modules')}")
+    check("email scan user_scanner has checked_at",
+          bool(us.get("checked_at")))
+    # The scan must never claim a fake clean: if it says NONE, at least
+    # one module gave a definitive not-registered answer.
+    if us.get("status") == "NONE":
+        check("email NONE has a definitive not-registered module",
+              us.get("not_registered_count", 0) > 0,
+              f"not_registered={us.get('not_registered_count')}")
 
     # Domain.
     r = client.post("/scan/domain", json={"target": "example.com"},
@@ -123,6 +153,23 @@ def main():
           f"scan_id={body.get('scan_id')}")
     check("domain scan dns_a present", "dns_a" in body.get("result", {}))
     check("domain scan rdap present", "rdap" in body.get("result", {}))
+    # subfinder + crt.sh subdomain steps.
+    sf = body.get("result", {}).get("subfinder", {})
+    check("domain scan subfinder present", bool(sf),
+          f"keys={list(body.get('result', {}).keys())}")
+    check("domain scan subfinder status valid",
+          sf.get("status") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"status={sf.get('status')}")
+    check("domain scan subfinder has checked_at", bool(sf.get("checked_at")))
+    ct = body.get("result", {}).get("crtsh", {})
+    check("domain scan crtsh present", bool(ct))
+    check("domain scan crtsh status valid",
+          ct.get("status") in ("FOUND", "NONE", "ERR"),
+          f"status={ct.get('status')}")
+    check("domain scan subdomains list present",
+          isinstance(body.get("result", {}).get("subdomains"), list))
+    check("domain scan subdomain_count present",
+          "subdomain_count" in body.get("result", {}))
 
     # Username (slow — Maigret top-50, ~1-2 min).
     r = client.post("/scan/username", json={"target": "testuser12345"},

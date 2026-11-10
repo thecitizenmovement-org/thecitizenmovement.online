@@ -21,10 +21,17 @@ Security properties:
     never printed, never in a repo). The backend uses the service_role
     key, which bypasses RLS, so it can write to `scans`/`verified_scams`.
 
-Tools (per ARCHITECTURE.md §2):
+Tools (per ARCHITECTURE.md §2, plus Copilot's Nov 10, 2026 tooling report):
   - PhoneInfoga v2 (Go binary) — phone/carrier/VOIP lookups.
   - Maigret — username checks (top-sites subset; full 509-site run is
     too slow for a synchronous API call).
+  - user-scanner — email registration checks (210+ sites) and a second
+    username engine (2,510+ sites). NEVER passes --hudson (infostealer
+    corpus — prohibited).
+  - subfinder (Go binary) — passive subdomain enumeration for the
+    domain scan. Keyless sources only; no API keys configured.
+  - crt.sh (direct HTTPS) — certificate-transparency subdomain data,
+    a second subdomain source alongside subfinder.
   - phonenumbers lib — phone parsing/validation/carrier.
   - DNS over HTTPS (Google/Cloudflare DoH) — real DNS. The local system
     resolver in this VM returns synthetic proxy addresses, so DoH is used.
@@ -32,6 +39,15 @@ Tools (per ARCHITECTURE.md §2):
     Direct WHOIS (port 43) is blocked in this environment, so RDAP is
     the WHOIS replacement.
   - Holehe and Sherlock are DROPPED (deprecated/rotted) — not used.
+  - theHarvester is BLOCKED (evaluated Nov 10, 2026): v4.11.1 installs
+    and its CLI runs, but its keyless sources return empty even for
+    github.com (aiohttp does not use the egress proxy; even with a
+    proxy configured in proxies.yaml the sources return nothing in
+    <1s). Its dependency pins (fastapi/uvicorn) conflict with this
+    backend's venv, it pulls in Playwright, and current master needs
+    Python 3.14 (this backend is 3.12). Its subdomain coverage is
+    already provided by subfinder + crt.sh. Do not re-add without
+    verifying it returns real data first.
 
 Run:
   SCAMINTEL_API_TOKEN=<token> SUPABASE_URL=<url> \\
@@ -39,12 +55,15 @@ Run:
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import re
 import secrets
 import subprocess
+import sys
 import urllib.parse
+from datetime import datetime, timezone
 
 import httpx
 import phonenumbers
@@ -65,17 +84,62 @@ SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 API_TOKEN = os.environ.get("SCAMINTEL_API_TOKEN") or secrets.token_urlsafe(32)
 TOKEN_WAS_GENERATED = "SCAMINTEL_API_TOKEN" not in os.environ
 
+def _resolve_tool_bin(env_name, default_name):
+    """Resolve a console-script binary (maigret, user-scanner).
+    The backend is started as `.venv/bin/python app.py` without
+    activating the venv, so the venv's bin dir is NOT on PATH and a bare
+    name would not resolve. If the env var names a bare command, prefer
+    the same directory as the running Python executable (the venv's bin)
+    when the binary exists there; otherwise fall back to the bare name
+    (PATH lookup — e.g. Docker, where pip installs to /usr/local/bin).
+    An explicit path in the env var is used as-is."""
+    value = os.environ.get(env_name, default_name)
+    if os.sep in value:
+        return value
+    candidate = os.path.join(os.path.dirname(sys.executable), value)
+    if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+        return candidate
+    return value
+
+
 # Tool paths / tunables (env-overridable, sane defaults).
 PHONEINFOGA_BIN = os.environ.get(
     "PHONEINFOGA_BIN",
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "phoneinfoga"),
 )
-MAIGRET_BIN = os.environ.get("MAIGRET_BIN", "maigret")
+MAIGRET_BIN = _resolve_tool_bin("MAIGRET_BIN", "maigret")
 MAIGRET_TOP_SITES = int(os.environ.get("MAIGRET_TOP_SITES", "50"))
 MAIGRET_TIMEOUT = int(os.environ.get("MAIGRET_TIMEOUT", "180"))
 PHONEINFOGA_TIMEOUT = int(os.environ.get("PHONEINFOGA_TIMEOUT", "90"))
 HTTP_TIMEOUT = float(os.environ.get("HTTP_TIMEOUT", "15"))
 MAX_CONCURRENT_SCANS = int(os.environ.get("MAX_CONCURRENT_SCANS", "3"))
+
+# user-scanner (email registration + second username engine).
+# NEVER passes --hudson (infostealer corpus — prohibited).
+USER_SCANNER_BIN = _resolve_tool_bin("USER_SCANNER_BIN", "user-scanner")
+USER_SCANNER_TIMEOUT = int(os.environ.get("USER_SCANNER_TIMEOUT", "240"))
+
+# subfinder (passive subdomain enumeration, Go binary).
+SUBFINDER_BIN = os.environ.get(
+    "SUBFINDER_BIN",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools", "subfinder"),
+)
+SUBFINDER_TIMEOUT = int(os.environ.get("SUBFINDER_TIMEOUT", "90"))
+SUBFINDER_MAX_RESULTS = int(os.environ.get("SUBFINDER_MAX_RESULTS", "500"))
+# Sources excluded from subfinder (comma-separated). anubis, crtname and
+# subdomaincenter return tens of thousands of synthetic/bogus subdomains
+# for ordinary domains (e.g. anubis returned 22,248 for example.com,
+# which has 6 real subdomains in crt.sh). Excluding them keeps the
+# results to sources that return real certificate/passive-DNS data.
+SUBFINDER_EXCLUDE_SOURCES = os.environ.get(
+    "SUBFINDER_EXCLUDE_SOURCES", "anubis,crtname,subdomaincenter"
+)
+
+# Numverify (free apilayer key) unlocks PhoneInfoga's carrier/line-type
+# scanner. Absent = that scanner is SKIP (never fake clean). The key is
+# read from the environment only; PhoneInfoga inherits it via the
+# subprocess environment. Never hardcode it.
+NUMVERIFY_API_KEY = os.environ.get("NUMVERIFY_API_KEY", "")
 
 # DoH resolvers (JSON API). Google first, Cloudflare fallback.
 DOH_URLS = [
@@ -118,7 +182,7 @@ def validate_target(kind, target):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Scam Intel API",
-    version="3.0.0-phase1",
+    version="3.0.0-phase1.1",
     description="Phase 1 scan backend for Scam Intel v3.0. Binds localhost only.",
 )
 security = HTTPBearer(auto_error=False)
@@ -261,15 +325,50 @@ async def supabase_upsert_verified(target, target_type, evidence):
 # ---------------------------------------------------------------------------
 # Tool runners (subprocess arg-lists ONLY — never shell=True)
 # ---------------------------------------------------------------------------
-def run_cmd(argv, timeout):
+def _utc_now():
+    """Current UTC timestamp (ISO 8601, Z suffix) for provenance."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _clean_proxy_env():
+    """Copy of os.environ with a sanitized NO_PROXY.
+    user-scanner's HTTP stack chokes on the bracketed IPv6 entries
+    (e.g. [::1]) in the runtime's NO_PROXY list ('Invalid port' errors
+    on some modules). A plain host list avoids that without changing
+    proxy routing."""
+    env = dict(os.environ)
+    env["NO_PROXY"] = "localhost,127.0.0.1"
+    env["no_proxy"] = "localhost,127.0.0.1"
+    return env
+
+
+def _egress_proxy():
+    """Egress proxy URL from the environment, if set.
+    Some Go tools (subfinder) do not read the proxy env vars themselves,
+    so the backend passes it explicitly via their -proxy flag. Never
+    logged. Empty string when no proxy is configured (e.g. Render,
+    which has direct internet)."""
+    return (
+        os.environ.get("https_proxy")
+        or os.environ.get("HTTPS_PROXY")
+        or os.environ.get("http_proxy")
+        or os.environ.get("HTTP_PROXY")
+        or ""
+    )
+
+
+def run_cmd(argv, timeout, env=None):
     """Run a command given as an argument LIST. Returns (output, ok).
-    Never a shell string."""
+    Never a shell string. env, when given, replaces the subprocess
+    environment (used to sanitize NO_PROXY for user-scanner); when
+    None the subprocess inherits the parent environment (which is how
+    NUMVERIFY_API_KEY reaches PhoneInfoga)."""
     if not isinstance(argv, (list, tuple)) or not argv:
         return "[ERROR] Invalid command.", False
     try:
         result = subprocess.run(
             list(argv), shell=False, capture_output=True, text=True,
-            timeout=timeout,
+            timeout=timeout, env=env,
         )
         return (result.stdout + result.stderr), result.returncode == 0
     except subprocess.TimeoutExpired:
@@ -280,9 +379,9 @@ def run_cmd(argv, timeout):
         return f"[ERROR] {str(e)}", False
 
 
-async def run_cmd_async(argv, timeout):
+async def run_cmd_async(argv, timeout, env=None):
     """Run run_cmd in a thread so the event loop is not blocked."""
-    return await asyncio.to_thread(run_cmd, argv, timeout)
+    return await asyncio.to_thread(run_cmd, argv, timeout, env)
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +449,238 @@ async def rdap_lookup(domain):
         return None
 
 
+async def crtsh_lookup(domain):
+    """Certificate-transparency subdomain data, direct HTTPS (crt.sh).
+    A second subdomain source alongside subfinder; uses the backend's
+    working httpx client (proxy-aware), so it works even where the
+    subfinder binary's sources are unreachable. Returns a dict with
+    status (FOUND/NONE/SKIP/ERR), subdomains, and provenance."""
+    checked_at = _utc_now()
+    result = {
+        "tool": "crtsh",
+        "source": "https://crt.sh",
+        "status": "ERR",
+        "checked_at": checked_at,
+        "subdomains": [],
+        "total_found": 0,
+    }
+    try:
+        async with _make_http_client() as client:
+            resp = await client.get(
+                "https://crt.sh/",
+                params={"q": f"%.{domain}", "output": "json"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        result["reason"] = f"crt.sh request failed: {e}"
+        return result
+    names = set()
+    for entry in data or []:
+        nv = str(entry.get("name_value", "") or "")
+        for line in nv.splitlines():
+            name = line.strip().lower()
+            if not name:
+                continue
+            if name.startswith("*."):
+                name = name[2:]
+            if name and name.endswith("." + domain.lower()):
+                names.add(name)
+    subs = sorted(names)
+    result["subdomains"] = subs
+    result["total_found"] = len(subs)
+    result["status"] = "FOUND" if subs else "NONE"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# user-scanner (email registration + username) — NEVER passes --hudson
+# ---------------------------------------------------------------------------
+async def run_user_scanner(target, kind):
+    """user-scanner registration check (email or username).
+    NEVER passes --hudson: that flag queries Hudson Rock infostealer
+    malware logs, which is an infostealer corpus and is prohibited.
+    kind: 'email' or 'username'.
+    Returns a dict with status (FOUND/NONE/SKIP/ERR), the registered
+    sites (each with site URL for provenance), counts, and a UTC
+    timestamp. A module that errors is ERR for that module, never a
+    fake 'not registered'."""
+    out_dir = "/tmp/user_scanner_reports"
+    os.makedirs(out_dir, exist_ok=True)
+    tag = hashlib.sha256(f"{kind}:{target}".encode()).hexdigest()[:12]
+    out_path = os.path.join(out_dir, f"us_{tag}.json")
+    if kind == "email":
+        argv = [USER_SCANNER_BIN, "-e", target, "-f", "json", "-o", out_path]
+    else:
+        argv = [USER_SCANNER_BIN, "-u", target, "-f", "json", "-o", out_path]
+    # NOTE: --hudson is NEVER passed (see docstring above).
+    output, ok = await run_cmd_async(
+        argv, USER_SCANNER_TIMEOUT, env=_clean_proxy_env()
+    )
+    checked_at = _utc_now()
+    result = {
+        "tool": "user-scanner",
+        "kind": kind,
+        "ran": ok,
+        "status": "ERR",
+        "checked_at": checked_at,
+        "registered": [],
+        "registered_count": 0,
+        "not_registered_count": 0,
+        "error_count": 0,
+        "skipped_count": 0,
+        "total_modules": 0,
+        "errors": [],
+    }
+    if not ok:
+        if "not installed" in output.lower() or "no such file" in output.lower():
+            result["status"] = "SKIP"
+            result["reason"] = "user-scanner not installed"
+        elif "[TIMEOUT]" in output:
+            result["status"] = "ERR"
+            result["reason"] = "user-scanner timed out"
+        else:
+            result["status"] = "ERR"
+            result["reason"] = output[:500]
+        return result
+    try:
+        with open(out_path) as f:
+            items = json.load(f)
+    except Exception as e:
+        result["status"] = "ERR"
+        result["reason"] = f"could not parse user-scanner output: {e}"
+        return result
+    finally:
+        try:
+            os.remove(out_path)
+        except OSError:
+            pass
+    registered = []
+    errors = []
+    counts = {"Registered": 0, "Not Registered": 0, "Error": 0, "Skipped": 0}
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        status = str(item.get("status", ""))
+        site = str(item.get("site_name", ""))
+        if status == "Registered":
+            counts["Registered"] += 1
+            extra = item.get("extra") or {}
+            profile = (
+                extra.get("profile")
+                or extra.get("url")
+                or item.get("url")
+                or ""
+            )
+            registered.append({
+                "site": site,
+                "category": str(item.get("category", "")),
+                "url": str(item.get("url", "")),
+                "profile": str(profile),
+                "login": str(extra.get("login", "")) if extra.get("login") else "",
+            })
+        elif status in ("Not Registered", "Not Found"):
+            counts["Not Registered"] += 1
+        elif status == "Error":
+            counts["Error"] += 1
+            errors.append({
+                "site": site,
+                "reason": str(item.get("reason", ""))[:200],
+            })
+        elif status == "Skipped":
+            counts["Skipped"] += 1
+        else:
+            counts["Error"] += 1
+            errors.append({
+                "site": site,
+                "reason": f"unexpected status: {status}",
+            })
+    result["total_modules"] = len(items or [])
+    result["registered"] = registered
+    result["registered_count"] = counts["Registered"]
+    result["not_registered_count"] = counts["Not Registered"]
+    result["error_count"] = counts["Error"]
+    result["skipped_count"] = counts["Skipped"]
+    # Cap the stored error list (220 modules can produce many errors).
+    result["errors"] = errors[:50]
+    result["errors_truncated"] = len(errors) > 50
+    if counts["Registered"] > 0:
+        result["status"] = "FOUND"
+    elif counts["Not Registered"] > 0:
+        result["status"] = "NONE"
+    elif counts["Error"] + counts["Skipped"] > 0 and (
+        counts["Error"] + counts["Skipped"] == result["total_modules"]
+    ):
+        # No module gave a definitive answer — cannot determine.
+        result["status"] = "ERR"
+        result["reason"] = "no module returned a definitive answer"
+    else:
+        result["status"] = "ERR"
+        result["reason"] = "no definitive result"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# subfinder (passive subdomain enumeration)
+# ---------------------------------------------------------------------------
+async def run_subfinder(domain):
+    """subfinder subdomain enumeration (Go binary, arg-list).
+    Keyless sources only; no API keys configured (keyed sources are
+    reported as skipped by subfinder, never as 'no subdomains').
+    Passes the egress proxy explicitly via -proxy when one is set in
+    the environment (subfinder does not read the proxy env vars itself).
+    Returns a dict with status (FOUND/NONE/SKIP/ERR), subdomains
+    (capped), total count, and a UTC timestamp."""
+    checked_at = _utc_now()
+    result = {
+        "tool": "subfinder",
+        "status": "ERR",
+        "checked_at": checked_at,
+        "subdomains": [],
+        "total_found": 0,
+        "truncated": False,
+    }
+    argv = [SUBFINDER_BIN, "-d", domain, "-silent"]
+    if SUBFINDER_EXCLUDE_SOURCES:
+        argv += ["-exclude-sources", SUBFINDER_EXCLUDE_SOURCES]
+    proxy = _egress_proxy()
+    if proxy:
+        # Passed as an argv value (never logged). subfinder needs this
+        # in proxied environments; on direct internet it is omitted.
+        argv += ["-proxy", proxy]
+    output, ok = await run_cmd_async(argv, SUBFINDER_TIMEOUT)
+    if not ok:
+        if "not installed" in output.lower() or "no such file" in output.lower():
+            result["status"] = "SKIP"
+            result["reason"] = "subfinder not installed"
+        elif "[TIMEOUT]" in output:
+            result["status"] = "ERR"
+            result["reason"] = "subfinder timed out"
+        else:
+            result["status"] = "ERR"
+            result["reason"] = output[:500]
+        return result
+    names = set()
+    for line in (output or "").splitlines():
+        name = line.strip().lower()
+        if not name:
+            continue
+        # subfinder -silent prints one subdomain per line; ignore any
+        # log lines (they start with '[').
+        if name.startswith("["):
+            continue
+        names.add(name)
+    subs = sorted(names)
+    result["total_found"] = len(subs)
+    if len(subs) > SUBFINDER_MAX_RESULTS:
+        result["subdomains"] = subs[:SUBFINDER_MAX_RESULTS]
+        result["truncated"] = True
+    else:
+        result["subdomains"] = subs
+    result["status"] = "FOUND" if subs else "NONE"
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Scan implementations
 # ---------------------------------------------------------------------------
@@ -376,6 +707,10 @@ async def scan_phone(number):
         detail["parsed"] = {"error": str(e)}
 
     # PhoneInfoga v2 (Go binary, arg-list, timeout).
+    # NUMVERIFY_API_KEY: when set in the backend environment, PhoneInfoga
+    # inherits it (subprocess env) and its numverify scanner returns real
+    # carrier/line-type. When absent that scanner is SKIP (never fake
+    # clean). The key is never logged or returned in the response.
     pi_output, pi_ok = await run_cmd_async(
         [PHONEINFOGA_BIN, "scan", "-n", number], PHONEINFOGA_TIMEOUT
     )
@@ -383,6 +718,28 @@ async def scan_phone(number):
         "ran": pi_ok,
         "output": pi_output[:8000],
     }
+    if NUMVERIFY_API_KEY:
+        numverify_ran = "numverify" in pi_output.lower()
+        detail["numverify"] = {
+            "enabled": True,
+            "status": "ran" if numverify_ran else "ERR",
+            "checked_at": _utc_now(),
+            "note": "carrier/line-type via Numverify (free key set)",
+        }
+        if numverify_ran:
+            # Surface the numverify line(s) from the PhoneInfoga output.
+            nv_lines = [
+                ln for ln in pi_output.splitlines()
+                if "numverify" in ln.lower()
+            ]
+            detail["numverify"]["output"] = "\n".join(nv_lines)[:1000]
+    else:
+        detail["numverify"] = {
+            "enabled": False,
+            "status": "SKIP",
+            "checked_at": _utc_now(),
+            "reason": "NUMVERIFY_API_KEY not set (free key from apilayer.com unlocks carrier/line-type)",
+        }
 
     # Known-scam lookup.
     verified = await supabase_lookup_verified(number, "phone")
@@ -408,7 +765,8 @@ async def scan_phone(number):
 
 
 async def scan_email(email):
-    """Email check: format + domain MX (DoH) + known-scam lookup."""
+    """Email check: format + domain MX (DoH) + user-scanner registration
+    check (210+ sites) + known-scam lookup."""
     detail = {}
     local, _, domain = email.rpartition("@")
     detail["local_part"] = local
@@ -418,6 +776,9 @@ async def scan_email(email):
     detail["domain_mx"] = mx
     detail["domain_a"] = a_records
     detail["domain_has_mail"] = bool(mx)
+    # user-scanner: is this email registered on public sites?
+    # NEVER passes --hudson (infostealer corpus — prohibited).
+    detail["user_scanner"] = await run_user_scanner(email, "email")
     verified = await supabase_lookup_verified(email, "email")
     verified_domain = None
     if not verified:
@@ -427,6 +788,17 @@ async def scan_email(email):
     detail["verified_scam_domain"] = verified_domain
     summary_bits = []
     summary_bits.append("domain accepts mail" if mx else "domain has no MX record")
+    us = detail["user_scanner"]
+    if us["status"] == "FOUND":
+        summary_bits.append(
+            f"registered on {us['registered_count']} site(s) via user-scanner"
+        )
+    elif us["status"] == "NONE":
+        summary_bits.append("not registered on any checked site (user-scanner)")
+    elif us["status"] == "SKIP":
+        summary_bits.append("user-scanner skipped (not installed)")
+    elif us["status"] == "ERR":
+        summary_bits.append("user-scanner could not determine registration")
     if verified:
         summary_bits.append("KNOWN SCAM — email in verified_scams")
     elif verified_domain:
@@ -436,7 +808,9 @@ async def scan_email(email):
 
 
 async def scan_domain(domain):
-    """Domain check: DNS (DoH A/MX/TXT) + RDAP + known-scam lookup."""
+    """Domain check: DNS (DoH A/MX/TXT) + RDAP + subfinder subdomain
+    enumeration + crt.sh certificate-transparency subdomains +
+    known-scam lookup."""
     detail = {}
     a_records = await doh_lookup(domain, "A")
     mx = await doh_lookup(domain, "MX")
@@ -446,6 +820,17 @@ async def scan_domain(domain):
     detail["dns_txt"] = txt
     rdap = await rdap_lookup(domain)
     detail["rdap"] = rdap
+    # Subdomain enumeration: subfinder (passive sources, keyless only)
+    # plus a direct crt.sh query (certificate transparency). Each is
+    # recorded separately with its own status and provenance; the merged
+    # list is the union.
+    detail["subfinder"] = await run_subfinder(domain)
+    detail["crtsh"] = await crtsh_lookup(domain)
+    merged = set(detail["subfinder"].get("subdomains", [])) | set(
+        detail["crtsh"].get("subdomains", [])
+    )
+    detail["subdomains"] = sorted(merged)
+    detail["subdomain_count"] = len(merged)
     verified = await supabase_lookup_verified(domain, "domain")
     detail["known_scam"] = verified is not None
     detail["verified_scam"] = verified
@@ -456,6 +841,8 @@ async def scan_domain(domain):
         summary_bits.append("does not resolve (no A record)")
     if rdap and rdap.get("registrar"):
         summary_bits.append(f"registrar: {rdap['registrar']}")
+    if merged:
+        summary_bits.append(f"{len(merged)} subdomain(s) found")
     if verified:
         summary_bits.append("KNOWN SCAM — in verified_scams")
     summary = "; ".join(summary_bits)
@@ -511,7 +898,7 @@ async def health():
     return {
         "status": "ok",
         "service": "scam-intel-api",
-        "version": "3.0.0-phase1",
+        "version": "3.0.0-phase1.1",
         "supabase_configured": _supabase_configured(),
     }
 

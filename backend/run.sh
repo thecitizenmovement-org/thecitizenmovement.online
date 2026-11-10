@@ -36,5 +36,20 @@ if [ ! -x "${PHONEINFOGA_BIN:-./tools/phoneinfoga}" ]; then
   exit 1
 fi
 
+# subfinder binary must exist (ships in ./tools/).
+if [ ! -x "${SUBFINDER_BIN:-./tools/subfinder}" ]; then
+  echo "ERROR: subfinder binary not found at ${SUBFINDER_BIN:-./tools/subfinder}" >&2
+  echo "Download subfinder v2 (Linux x86_64) from" >&2
+  echo "https://github.com/projectdiscovery/subfinder/releases and place" >&2
+  echo "the binary at ./tools/subfinder (chmod +x)." >&2
+  exit 1
+fi
+
+# user-scanner must be importable/runnable from the venv.
+if ! .venv/bin/user-scanner --version >/dev/null 2>&1; then
+  echo "Installing user-scanner into the venv..."
+  .venv/bin/pip install --quiet user-scanner
+fi
+
 export SCAMINTEL_PORT="${SCAMINTEL_PORT:-8000}"
 exec .venv/bin/python app.py

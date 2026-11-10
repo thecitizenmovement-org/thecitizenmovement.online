@@ -6,3 +6,9 @@ httpx==0.28.1
 phonenumbers==9.0.43
 python-whois==0.9.6
 maigret==0.6.6
+user-scanner==1.5.2.5
+# NOTE: user-scanner is used for email registration checks only (220
+# modules, ~80 s). Its full username run (2,510+ sites) takes >3 min,
+# too slow for a synchronous API call, so Maigret covers username.
+# NEVER pass user-scanner's --hudson flag (infostealer corpus).
+# theHarvester is NOT installed here (blocked — see app.py docstring).
