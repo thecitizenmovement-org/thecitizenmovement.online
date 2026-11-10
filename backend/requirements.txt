@@ -1,0 +1,8 @@
+# Scam Intel v3.0 — Phase 1 backend dependencies
+# Install into a virtualenv:  python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+fastapi==0.162.2
+uvicorn==0.54.0
+httpx==0.28.1
+phonenumbers==9.0.43
+python-whois==0.9.6
+maigret==0.6.6

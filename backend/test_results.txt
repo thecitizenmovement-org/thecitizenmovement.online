@@ -1,0 +1,53 @@
+[PASS] health returns 200 — got 200
+[PASS] health supabase_configured
+[PASS] no token -> 401 — got 401
+[PASS] wrong token -> 401 — got 401
+[PASS] wrong token on check -> 401 — got 401
+[PASS] invalid phone 'not-a-phone' -> 400 — got 400
+[PASS] invalid phone '+15551234567; rm -rf /' -> 400 — got 400
+[PASS] invalid phone '+15551234567$(whoami)' -> 400 — got 400
+[PASS] invalid phone '' -> 400 — got 400
+[PASS] invalid phone 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
+[PASS] invalid email 'not-an-email' -> 400 — got 400
+[PASS] invalid email 'a@b' -> 400 — got 400
+[PASS] invalid email 'user@example.com; cat /etc/pas' -> 400 — got 400
+[PASS] invalid email 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
+[PASS] invalid domain 'not a domain' -> 400 — got 400
+[PASS] invalid domain 'example.com/../../etc/passwd' -> 400 — got 400
+[PASS] invalid domain '-bad-.com' -> 400 — got 400
+[PASS] invalid domain 'example.com; whoami' -> 400 — got 400
+[PASS] invalid username 'bad user!' -> 400 — got 400
+[PASS] invalid username '../etc/passwd' -> 400 — got 400
+[PASS] invalid username 'user; rm -rf /' -> 400 — got 400
+[PASS] invalid username 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
+[PASS] backtick injection -> 400 — got 400
+[PASS] shell metachars in phone -> 400 — got 400
+[PASS] phone scan 200 — got 200
+[PASS] phone scan stored in scans — scan_id=5a0f1ebd-744c-45b3-9fb3-7b79c7a09c25
+[PASS] phone scan known_scam false
+[PASS] phone scan has parsed result
+[PASS] email scan 200 — got 200
+[PASS] email scan stored — scan_id=7dbb3364-2c9f-4759-90e5-f09b2fe57543
+[PASS] email scan domain_mx present
+[PASS] domain scan 200 — got 200
+[PASS] domain scan stored — scan_id=d34b57fb-b946-4982-b0b7-3ae09341fde3
+[PASS] domain scan dns_a present
+[PASS] domain scan rdap present
+[PASS] username scan 200 — got 200
+[PASS] username scan stored — scan_id=3ff093d2-3c42-4c9d-805f-b59bd7b53c31
+[PASS] username scan found_count present
+[PASS] check unknown -> known_scam false — got 200 False
+[PASS] report synthetic phone 200 — got 200
+[PASS] report reporter_count 1 — got 1
+[PASS] check after report -> known_scam true
+[PASS] second report reporter_count 2 — got 2
+[PASS] report bad target_type -> 400 — got 400
+[PASS] report bad phone target -> 400 — got 400
+[PASS] report evidence too long -> 400 — got 400
+
+NOTE: synthetic verified_scams row for +15559876543 is marked
+[TEST] and uses a fictional number. Remove it in Supabase if
+you want a clean table (DELETE FROM verified_scams WHERE
+target = '+15559876543').
+
+46/46 checks passed.

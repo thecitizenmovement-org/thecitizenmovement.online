@@ -1,0 +1,241 @@
+# Scam Intel API — Specification (v3.0 Phase 1)
+
+Base URL (local dev): `http://127.0.0.1:8000`
+Binds **127.0.0.1 only**. Never expose publicly. The hosted service runs on
+a small VPS/container (see README.md).
+
+## Auth
+
+Every endpoint except `GET /health` requires a bearer token:
+
+```
+Authorization: Bearer <SCAMINTEL_API_TOKEN>
+```
+
+- Missing or wrong token → `401 {"detail": "Unauthorized"}`.
+- Supabase JWT verification replaces this bearer token in Phase 2 — not now.
+- The token is set via the `SCAMINTEL_API_TOKEN` environment variable. If
+  unset, the service generates a random one per run and prints it once.
+
+## Common behaviour
+
+- All scan endpoints validate the target with the same strict regexes as
+  the hardened v3.0 dev `server.py`. Invalid input → `400`.
+- Every completed scan writes one row to the Supabase `scans` table
+  (`tool`, `target`, `target_type`, `result_summary`, `result` JSONB,
+  `status`, `created_at`). The write uses the service_role key, which
+  bypasses RLS. If Supabase is not configured, the scan still runs but
+  the response has `"stored": false` and `scan_id: null`.
+- `user_id` on a scan row is `null` until Phase 2 (Supabase JWT auth)
+  populates it.
+- Responses are JSON. Errors never include stack traces or secrets.
+
+## Endpoints
+
+### GET /health
+
+Public liveness check. No auth.
+
+Response `200`:
+```json
+{
+  "status": "ok",
+  "service": "scam-intel-api",
+  "version": "3.0.0-phase1",
+  "supabase_configured": true
+}
+```
+
+### POST /scan/phone
+
+Phone check: `phonenumbers` parse (carrier/region/validity) + PhoneInfoga
+v2 scan + known-scam lookup against `verified_scams`.
+
+Request:
+```json
+{ "target": "+15551234567" }
+```
+
+Response `200`:
+```json
+{
+  "scan_id": "<uuid>",
+  "tool": "phoneinfoga",
+  "target": "+15551234567",
+  "target_type": "phone",
+  "status": "complete",
+  "result_summary": "valid number; carrier: ...; region: ...",
+  "result": {
+    "parsed": {
+      "e164": "+15551234567",
+      "country_code": 1,
+      "national_number": "5551234567",
+      "possible": true,
+      "valid": false,
+      "region": "California",
+      "carrier": "",
+      "number_type": "FIXED_LINE_OR_MOBILE"
+    },
+    "phoneinfoga": { "ran": true, "output": "..." },
+    "known_scam": false,
+    "verified_scam": null
+  },
+  "known_scam": false,
+  "stored": true
+}
+```
+
+Notes:
+- PhoneInfoga v2's default scanners return Google-search URL lists unless
+  API keys are configured. Live carrier/VOIP enrichment needs API keys
+  (not configured). The `phonenumbers` parse is the reliable local signal.
+- `valid: false` for 555-01xx numbers is expected — they are fictional.
+
+Errors: `400` invalid phone number. `401` bad/missing token.
+
+### POST /scan/email
+
+Email check: format validation + domain MX/A via DNS-over-HTTPS + known-scam
+lookup (email, then its domain).
+
+Request:
+```json
+{ "target": "someone@example.com" }
+```
+
+Response `200` — same shape as `/scan/phone`, with:
+- `tool`: `"email_check"`, `target_type`: `"email"`.
+- `result.domain_mx`: MX records for the domain (DoH).
+- `result.domain_a`: A records for the domain (DoH).
+- `result.domain_has_mail`: boolean.
+- `result.verified_scam_domain`: the domain's row in `verified_scams`, if any.
+
+Errors: `400` invalid email address. `401` bad/missing token.
+
+### POST /scan/domain
+
+Domain check: DNS (DoH A/MX/TXT) + RDAP (registrar/status/creation) +
+known-scam lookup.
+
+Request:
+```json
+{ "target": "example.com" }
+```
+
+Response `200` — same shape, with:
+- `tool`: `"domain_check"`, `target_type`: `"domain"`.
+- `result.dns_a`, `result.dns_mx`, `result.dns_txt`.
+- `result.rdap`: `{ "registrar", "status", "creation_date",
+  "expiration_date", "last_changed", "handle" }` (null when RDAP fails).
+
+Notes:
+- DNS uses DNS-over-HTTPS (Google, then Cloudflare). The local system
+  resolver in this VM returns synthetic proxy addresses, so DoH is used.
+- Registrar data uses RDAP over HTTPS (rdap.org). Direct WHOIS (port 43)
+  is blocked in this environment.
+
+Errors: `400` invalid domain. `401` bad/missing token.
+
+### POST /scan/username
+
+Username check: Maigret against the top-N sites + known-scam lookup.
+
+Request:
+```json
+{ "target": "someusername" }
+```
+
+Response `200` — same shape, with:
+- `tool`: `"maigret"`, `target_type`: `"username"`.
+- `result.found_accounts`: list of `{ "site", "url", "username" }`.
+- `result.found_count`: number of accounts found.
+- `result.maigret`: `{ "ran": true, "output": "..." }` (tail of CLI output).
+
+Notes:
+- Maigret runs against the top 50 sites by default (`MAIGRET_TOP_SITES`).
+  A full 509-site run takes ~3–4 minutes and is too slow for a
+  synchronous API call. Timeout is 180 s (`MAIGRET_TIMEOUT`).
+- Many sites block automated checks; a low count does not prove the
+  username is unused.
+
+Errors: `400` invalid username. `401` bad/missing token.
+
+### POST /scam/report
+
+Member submits a verified scam. Upserts into `verified_scams` (backend
+service role only). If the target already exists, `reporter_count` is
+incremented and `last_seen` refreshed.
+
+Request:
+```json
+{
+  "target": "+15551234567",
+  "target_type": "phone",
+  "evidence": "Called claiming to be the IRS; asked for gift cards."
+}
+```
+
+- `target_type` must be one of `phone`, `domain`, `email`, `other`.
+- `target` is validated the same way as the matching scan endpoint
+  (`other` only needs a non-empty string, max 253 chars).
+- `evidence` max 4000 characters.
+
+Response `200` (the upserted row):
+```json
+{
+  "target": "+15551234567",
+  "target_type": "phone",
+  "evidence": "Called claiming to be the IRS; asked for gift cards.",
+  "reporter_count": 1,
+  "first_seen": "2026-11-10T...",
+  "last_seen": "2026-11-10T...",
+  "id": "<uuid>"
+}
+```
+
+Errors: `400` invalid target/target_type/evidence. `401` bad/missing
+token. `502` could not write to Supabase.
+
+### GET /scam/check?target=...
+
+Instant "known scam?" lookup against `verified_scams`. Exact match
+(case-insensitive).
+
+Request: `GET /scam/check?target=%2B15551234567`
+
+Response `200`:
+```json
+{ "target": "+15551234567", "known_scam": true, "verified_scam": { ... } }
+```
+or, when not found:
+```json
+{ "target": "+15551234567", "known_scam": false, "verified_scam": null }
+```
+
+Errors: `401` bad/missing token. `422` missing/empty `target` query param.
+
+## Error reference
+
+| Status | Meaning |
+|--------|---------|
+| 400 | Invalid input (bad target, bad target_type, evidence too long). |
+| 401 | Missing or wrong bearer token. |
+| 422 | Missing/invalid query parameter or request body. |
+| 502 | Supabase write/read failed (only for `/scam/report`). |
+| 503 | A scan tool is unavailable (returned inside a scan `result`, not as HTTP 503). |
+
+## Rate / concurrency limits
+
+- Max 3 concurrent scans (`MAX_CONCURRENT_SCANS`). Extra requests wait
+  for a slot. There is no per-user quota yet — that arrives with Phase 3
+  (Stripe + `usage_quotas`).
+- Per-tool timeouts: PhoneInfoga 90 s, Maigret 180 s, HTTP (DoH/RDAP/
+  Supabase) 15 s. A tool timeout is recorded in the scan `result`, not
+  hidden.
+
+## What is NOT in Phase 1
+
+- Supabase JWT auth (Phase 2 — replaces the bearer token).
+- Quotas / Stripe gating (Phase 3).
+- `users`, `usage_quotas`, `payments` tables (Phase 2/3).
+- A public URL / hosted deployment (see README.md — VPS/container needed).

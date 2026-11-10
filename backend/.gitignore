@@ -1,0 +1,9 @@
+# Never commit a filled-in .env or the local venv.
+.env
+.venv/
+__pycache__/
+*.pyc
+# PhoneInfoga binary is NOT committed: the GitHub MCP push path cannot
+# carry binary files correctly. The Dockerfile downloads v2.11.0 (SHA256
+# pinned) from the official release at build time instead.
+tools/

@@ -1,0 +1,23 @@
+# Render blueprint — Scam Intel API (Phase 1 backend)
+# Free tier web service, Docker runtime.
+# Secrets (SCAMINTEL_API_TOKEN, SUPABASE_SERVICE_KEY) are sync: false, so
+# they are set in the Render dashboard, never in this file or the repo.
+# SUPABASE_URL is the public project URL (already in .env.example / README).
+services:
+  - type: web
+    name: scam-intel-backend
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: SCAMINTEL_API_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        value: https://fcfsxgxqsownfywaokdp.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: PHONEINFOGA_BIN
+        value: /app/tools/phoneinfoga
+      - key: MAIGRET_BIN
+        value: maigret

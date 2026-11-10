@@ -1,0 +1,11 @@
+# Docker build context — keep the image lean and secret-free.
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+tools/
+test_api.py
+test_results.txt
+.git/
