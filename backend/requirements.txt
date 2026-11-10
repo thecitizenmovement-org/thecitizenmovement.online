@@ -7,6 +7,11 @@ phonenumbers==9.0.43
 python-whois==0.9.6
 maigret==0.6.6
 user-scanner==1.5.2.5
+usaddress==0.5.16
+# NOTE: usaddress is used for address parsing only (in-process, no
+# network) in POST /address/verify. It parses; it does NOT verify —
+# verification comes from Geocodio (primary), the US Census Geocoder
+# (fallback), and Nominatim (third opinion only).
 # NOTE: user-scanner is used for email registration checks only (220
 # modules, ~80 s). Its full username run (2,510+ sites) takes >3 min,
 # too slow for a synchronous API call, so Maigret covers username.

@@ -65,6 +65,9 @@ COPY API_SPEC.md README.md ./
 # USER_SCANNER_BIN is the `user-scanner` console script from the pip install.
 # NUMVERIFY_API_KEY is set in the Render dashboard (free apilayer key);
 # when absent, PhoneInfoga's numverify scanner is SKIP.
+# GEOCODIO_API_KEY is set in the Render dashboard (free geocod.io key,
+# 2,500 lookups/day); when absent, POST /address/verify falls back to
+# the US Census Geocoder (no key) — never a fake clean.
 ENV PHONEINFOGA_BIN=/app/tools/phoneinfoga \
     SUBFINDER_BIN=/app/tools/subfinder \
     MAIGRET_BIN=maigret \

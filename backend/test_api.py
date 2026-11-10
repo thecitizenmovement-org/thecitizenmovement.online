@@ -95,6 +95,13 @@ def main():
     r = client.get("/scam/check", params={"target": "nobody@example.com"},
                    headers=auth_headers(WRONG_TOKEN))
     check("wrong token on check -> 401", r.status_code == 401, f"got {r.status_code}")
+    r = client.post("/address/verify",
+                    json={"target": "1600 Amphitheatre Parkway, Mountain View, CA 94043"})
+    check("no token on address verify -> 401", r.status_code == 401, f"got {r.status_code}")
+    r = client.post("/address/verify",
+                    json={"target": "1600 Amphitheatre Parkway, Mountain View, CA 94043"},
+                    headers=auth_headers(WRONG_TOKEN))
+    check("wrong token on address verify -> 401", r.status_code == 401, f"got {r.status_code}")
 
     # --- Input validation (expect 400) ---
     bad_cases = [
@@ -133,6 +140,14 @@ def main():
     r = client.post("/scan/phone", json={"target": "+1 (555) 123-4567 && id"},
                     headers=auth_headers())
     check("shell metachars in phone -> 400", r.status_code == 400, f"got {r.status_code}")
+
+    # Address validation (expect 400).
+    for bad_addr in ["", "1600 Main St; rm -rf /", "1600 Main St $(whoami)",
+                     "x" * 300, "!!!", "1600 Main St `id`"]:
+        r = client.post("/address/verify", json={"target": bad_addr},
+                        headers=auth_headers())
+        check(f"invalid address {bad_addr[:30]!r} -> 400",
+              r.status_code == 400, f"got {r.status_code}")
 
     # --- Live scans (synthetic targets only) ---
     # Phone (fictional 555 number).
@@ -256,6 +271,83 @@ def main():
           f"scan_id={body.get('scan_id')}")
     check("username scan found_count present",
           "found_count" in body.get("result", {}))
+
+    # Address verification (fictional-but-real-format address + a fake
+    # one). Geocodio step: no key -> SKIP (never fake clean); bad key
+    # -> ERR; valid key -> FOUND/NONE on a real answer. Census is the
+    # no-key fallback; Nominatim only runs on Geocodio/Census
+    # disagreement. ADDRESS_EXPECTED (env) pins the verdict for this
+    # run (FOUND on live Render with a key; FOUND locally via Census).
+    r = client.post("/address/verify",
+                    json={"target": "1600 Amphitheatre Parkway, Mountain View, CA 94043"},
+                    headers=auth_headers())
+    ok = r.status_code == 200
+    body = r.json() if ok else {}
+    check("address scan 200", ok, f"got {r.status_code}")
+    check("address scan stored", body.get("stored") is True,
+          f"scan_id={body.get('scan_id')}")
+    check("address scan verdict valid",
+          body.get("verdict") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"verdict={body.get('verdict')} source={body.get('source')}")
+    res = body.get("result", {})
+    check("address scan result has steps",
+          all(k in res for k in ("parsed", "geocodio", "census", "nominatim",
+                                 "verdict", "source", "checked_at")),
+          f"keys={list(res.keys())}")
+    check("address scan geocodio status valid",
+          res.get("geocodio", {}).get("status") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"status={res.get('geocodio', {}).get('status')}")
+    check("address scan census status valid",
+          res.get("census", {}).get("status") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"status={res.get('census', {}).get('status')}")
+    check("address scan nominatim status valid",
+          res.get("nominatim", {}).get("status") in ("FOUND", "NONE", "SKIP", "ERR"),
+          f"status={res.get('nominatim', {}).get('status')}")
+    check("address scan parsed present", "components" in res.get("parsed", {}),
+          f"parseable={res.get('parsed', {}).get('parseable')}")
+    check("address scan has checked_at", bool(res.get("checked_at")))
+    expected_addr = os.environ.get("ADDRESS_EXPECTED", "").strip()
+    if expected_addr:
+        check(f"address scan verdict is {expected_addr}",
+              body.get("verdict") == expected_addr,
+              f"verdict={body.get('verdict')} source={body.get('source')}")
+    if body.get("verdict") == "FOUND":
+        check("address FOUND has standardized address",
+              bool(body.get("standardized_address")),
+              f"std={body.get('standardized_address')!r}")
+        # Verified-good address upserts into verified_valid.
+        if _sb_url and _sb_key:
+            try:
+                _sb_client = httpx.Client(timeout=30, trust_env=False,
+                                          proxy=_proxy)
+                vr = _sb_client.get(
+                    f"{_sb_url}/rest/v1/verified_valid",
+                    params={"target": f"eq.{body.get('standardized_address')}",
+                            "target_type": "eq.address"},
+                    headers={"apikey": _sb_key,
+                             "Authorization": f"Bearer {_sb_key}"},
+                )
+                rows = vr.json() if vr.status_code == 200 else []
+                check("address FOUND upserted into verified_valid",
+                      len(rows) >= 1,
+                      f"rows={len(rows)} std={body.get('standardized_address')!r}")
+                _sb_client.close()
+            except Exception as e:
+                check("address FOUND upserted into verified_valid", False,
+                      f"lookup failed: {e}")
+    # Fake address: never FOUND.
+    r = client.post("/address/verify",
+                    json={"target": "99999 Nowhere Street, Faketown, ZZ 00000"},
+                    headers=auth_headers())
+    ok = r.status_code == 200
+    body = r.json() if ok else {}
+    check("fake address scan 200", ok, f"got {r.status_code}")
+    check("fake address verdict never FOUND",
+          body.get("verdict") in ("NONE", "ERR"),
+          f"verdict={body.get('verdict')} source={body.get('source')}")
+    check("fake address not in verified_valid",
+          body.get("known_valid") is False,
+          f"known_valid={body.get('known_valid')}")
 
     # --- /scam/check (unknown target) ---
     r = client.get("/scam/check", params={"target": "+15559876543"},

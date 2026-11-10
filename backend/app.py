@@ -40,6 +40,18 @@ Tools (per ARCHITECTURE.md §2, plus Copilot's Nov 10, 2026 tooling report):
     domain scan. Keyless sources only; no API keys configured.
   - crt.sh (direct HTTPS) — certificate-transparency subdomain data,
     a second subdomain source alongside subfinder.
+  - Geocodio (direct HTTPS, API v2.1) — address verification,
+    primary (free key, GEOCODIO_API_KEY, 2,500 lookups/day).
+    Rooftop / parcel-centroid with a high score = FOUND; range
+    interpolation = FOUND (weak); street-center / place / county /
+    state centroid or no match = NONE; down or no key = SKIP.
+  - US Census Geocoder (direct HTTPS, no key) — address second
+    opinion / fallback. Existence/range only (TIGER interpolation),
+    NOT deliverability.
+  - Nominatim (direct HTTPS, no key) — address third opinion ONLY,
+    when Geocodio and Census disagree. 1 request/sec, results
+    cached, address text only (never a customer name).
+  - usaddress (in-process) — address parsing only, never a verdict.
   - phonenumbers lib — phone parsing/validation/carrier.
   - DNS over HTTPS (Google/Cloudflare DoH) — real DNS. The local system
     resolver in this VM returns synthetic proxy addresses, so DoH is used.
@@ -156,6 +168,41 @@ NUMVERIFY_API_KEY = os.environ.get("NUMVERIFY_API_KEY", "")
 NUMVERIFY_URL = "https://api.apilayer.net/numverify/api/validate"
 NUMVERIFY_TIMEOUT = int(os.environ.get("NUMVERIFY_TIMEOUT", "15"))
 
+# Geocodio (free key) — primary address verification, API v2.1
+# (https://api.geocod.io/v2.1/geocode, current docs Nov 10, 2026).
+# Rooftop (parcel centroid arrives as match_type, with
+# accuracy_type rooftop) with a high accuracy score = FOUND; range
+# interpolation = FOUND (weak); street-center / place / county /
+# state centroid or no match = NONE; down or no key = SKIP. The key
+# is read from the environment only and is never logged or returned.
+# Never hardcode it. Free tier: 2,500 lookups/day, no card.
+GEOCODIO_API_KEY = os.environ.get("GEOCODIO_API_KEY", "")
+GEOCODIO_URL = "https://api.geocod.io/v2.1/geocode"
+GEOCODIO_TIMEOUT = int(os.environ.get("GEOCODIO_TIMEOUT", "15"))
+GEOCODIO_FOUND_MIN_SCORE = float(os.environ.get("GEOCODIO_FOUND_MIN_SCORE", "0.8"))
+
+# US Census Geocoder (free, no key) — address second opinion /
+# fallback. Existence/range only (TIGER interpolation), NOT
+# deliverability. A match is FOUND (weak); no match is NONE.
+CENSUS_URL = "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress"
+CENSUS_TIMEOUT = int(os.environ.get("CENSUS_TIMEOUT", "15"))
+
+# Nominatim (free, no key) — address third opinion ONLY. Usage
+# policy (operations.osmfoundation.org/policies/nominatim/): max 1
+# request/sec for the whole application, a valid User-Agent
+# identifying the application is required, results must be cached,
+# address text only (never a customer name or other personal data).
+# Called only when Geocodio and Census disagree, or when both are
+# unavailable. Never the primary check.
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+NOMINATIM_USER_AGENT = os.environ.get(
+    "NOMINATIM_USER_AGENT", "ScamIntel/3.0 (thecitizenmovement.store)"
+)
+NOMINATIM_TIMEOUT = int(os.environ.get("NOMINATIM_TIMEOUT", "15"))
+NOMINATIM_MIN_INTERVAL = 1.0  # seconds between requests (policy max 1/sec)
+NOMINATIM_CACHE_TTL = int(os.environ.get("NOMINATIM_CACHE_TTL", "86400"))  # 24h
+NOMINATIM_CACHE_MAX = 1000
+
 # DoH resolvers (JSON API). Google first, Cloudflare fallback.
 DOH_URLS = [
     "https://dns.google/resolve",
@@ -174,6 +221,9 @@ DOMAIN_RE = re.compile(
     r"(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$"
 )
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_.\-]{1,64}$")
+# US street address: letters/digits plus . , # / ' - ( ) and spaces.
+# No shell metachars, no control characters. At least one letter.
+ADDRESS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,#/'\-()]{0,252}$")
 
 
 def validate_target(kind, target):
@@ -189,6 +239,8 @@ def validate_target(kind, target):
         return bool(DOMAIN_RE.match(t)) and "." in t
     if kind == "username":
         return bool(USERNAME_RE.match(t))
+    if kind == "address":
+        return bool(ADDRESS_RE.match(t)) and any(c.isalpha() for c in t)
     return False
 
 
@@ -197,7 +249,7 @@ def validate_target(kind, target):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Scam Intel API",
-    version="3.0.0-phase1.2",
+    version="3.0.0-phase1.3",
     description="Phase 1 scan backend for Scam Intel v3.0. Binds localhost only.",
 )
 security = HTTPBearer(auto_error=False)
@@ -232,14 +284,25 @@ def _make_http_client(timeout=HTTP_TIMEOUT):
     NO_PROXY list contains bracketed IPv6 entries that httpx cannot
     parse) and instead uses the egress proxy explicitly when set.
     External HTTPS calls (Supabase, DoH, RDAP) go through the proxy;
-    without it they cannot leave this VM."""
+    without it they cannot leave this VM.
+    TLS: the runtime's egress proxy MITMs some hosts (e.g.
+    geocoding.geo.census.gov, api.apilayer.net) with a CA the default
+    certifi bundle does not trust. The runtime publishes its CA
+    bundle at SSL_CERT_FILE (the same bundle curl uses); use it when
+    present, otherwise default verification. On Render the variable
+    is unset and this is a no-op."""
     proxy = (
         os.environ.get("https_proxy")
         or os.environ.get("HTTPS_PROXY")
         or os.environ.get("http_proxy")
         or os.environ.get("HTTP_PROXY")
     )
-    return httpx.AsyncClient(timeout=timeout, trust_env=False, proxy=proxy)
+    verify = True
+    ca_bundle = os.environ.get("SSL_CERT_FILE", "")
+    if ca_bundle and os.path.isfile(ca_bundle):
+        verify = ca_bundle
+    return httpx.AsyncClient(timeout=timeout, trust_env=False, proxy=proxy,
+                             verify=verify)
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +391,71 @@ async def supabase_upsert_verified(target, target_type, evidence):
                     "target_type": target_type,
                     "evidence": evidence,
                     "reporter_count": 1,
+                },
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+            return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+async def supabase_lookup_valid(target, target_type=None):
+    """Look up a target in `verified_valid` (the good list). Returns
+    the row or None."""
+    if not _supabase_configured():
+        return None
+    params = {"target": f"ilike.{target}"}
+    if target_type:
+        params["target_type"] = f"eq.{target_type}"
+    try:
+        async with _make_http_client() as client:
+            resp = await client.get(
+                f"{SUPABASE_URL}/rest/v1/verified_valid",
+                headers=_supabase_headers(),
+                params=params,
+            )
+            resp.raise_for_status()
+            rows = resp.json()
+            return rows[0] if rows else None
+    except Exception:
+        return None
+
+
+async def supabase_upsert_valid(target, target_type, verified_via, details,
+                                evidence):
+    """Upsert a verified-good target into `verified_valid`. Refreshes
+    last_seen, verified_via and details when the target already
+    exists (UNIQUE(target, target_type)). Returns the row or None."""
+    if not _supabase_configured():
+        return None
+    existing = await supabase_lookup_valid(target, target_type)
+    try:
+        async with _make_http_client() as client:
+            if existing:
+                resp = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/verified_valid",
+                    headers=_supabase_headers(),
+                    params={"id": f"eq.{existing['id']}"},
+                    json={
+                        "verified_via": verified_via,
+                        "details": details,
+                        "evidence": evidence or existing.get("evidence"),
+                        "last_seen": "now()",
+                    },
+                )
+                resp.raise_for_status()
+                rows = resp.json()
+                return rows[0] if rows else existing
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/verified_valid",
+                headers=_supabase_headers(),
+                json={
+                    "target": target,
+                    "target_type": target_type,
+                    "verified_via": verified_via,
+                    "details": details,
+                    "evidence": evidence,
                 },
             )
             resp.raise_for_status()
@@ -770,6 +898,303 @@ async def run_subfinder(domain):
 
 
 # ---------------------------------------------------------------------------
+# Address verification (Geocodio primary, Census fallback, Nominatim
+# third opinion) — POST /address/verify
+# ---------------------------------------------------------------------------
+try:
+    import usaddress as _usaddress
+except Exception:  # missing dep is a SKIP for the parse step, not a crash
+    _usaddress = None
+
+
+def parse_address(address):
+    """Parse a US address string into components with usaddress
+    (in-process, no network). Parsing only — never a verdict by
+    itself. Returns a dict with components, a parseable flag, and a
+    UTC timestamp. usaddress missing = SKIP (the API calls still run;
+    Geocodio does its own parsing)."""
+    checked_at = _utc_now()
+    result = {
+        "tool": "usaddress",
+        "status": "SKIP",
+        "checked_at": checked_at,
+        "components": {},
+        "parseable": False,
+    }
+    if _usaddress is None:
+        result["reason"] = "usaddress not installed"
+        return result
+    try:
+        tagged = _usaddress.parse(address)
+    except Exception as e:
+        result["status"] = "ERR"
+        result["reason"] = f"usaddress parse failed: {e}"[:300]
+        return result
+    components = {}
+    for value, label in tagged:
+        clean = value.strip().strip(",")
+        if not clean:
+            continue
+        # A label can repeat (e.g. two PlaceName tokens); join repeats.
+        if label in components:
+            components[label] = f"{components[label]} {clean}"
+        else:
+            components[label] = clean
+    result["components"] = components
+    has_number = bool(components.get("AddressNumber"))
+    has_street = bool(components.get("StreetName"))
+    result["parseable"] = bool(has_number and has_street)
+    result["status"] = "FOUND" if result["parseable"] else "NONE"
+    if not result["parseable"]:
+        result["reason"] = (
+            "no street number + street name parsed "
+            "(geocoders still attempted)"
+        )
+    return result
+
+
+async def geocodio_lookup(address):
+    """Verify an address with Geocodio (API v2.1, direct HTTPS).
+    Returns a dict with status (FOUND/NONE/SKIP/ERR), the
+    standardized address, accuracy score/type, match_type, and
+    provenance. Verdict mapping (accuracy_type values from the
+    Geocodio docs, current Nov 10, 2026):
+      rooftop (parcel centroid arrives as match_type, with
+        accuracy_type rooftop) with score >= GEOCODIO_FOUND_MIN_SCORE
+        -> FOUND
+      range_interpolation with score >= threshold -> FOUND (weak)
+      street_center / place / county / state / nearest_* /
+        intersection / point / coordinate / no results -> NONE
+    No key = SKIP (no network call, never a fake clean). Any failed
+    call (bad key, 403, 429, timeout) = ERR."""
+    checked_at = _utc_now()
+    base = {
+        "tool": "geocodio",
+        "source": GEOCODIO_URL,
+        "status": "SKIP",
+        "checked_at": checked_at,
+        "standardized_address": None,
+        "accuracy": None,
+        "accuracy_type": None,
+        "match_type": None,
+    }
+    if not GEOCODIO_API_KEY:
+        base["reason"] = (
+            "GEOCODIO_API_KEY not set "
+            "(free key from geocod.io unlocks address verification)"
+        )
+        return base
+    try:
+        async with _make_http_client(timeout=GEOCODIO_TIMEOUT) as client:
+            resp = await client.get(
+                GEOCODIO_URL,
+                params={"q": address, "api_key": GEOCODIO_API_KEY},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        return {
+            **base, "status": "ERR",
+            "reason": f"Geocodio request failed: {e}"[:500],
+        }
+    results = (data or {}).get("results") or []
+    if not results:
+        return {**base, "status": "NONE",
+                "reason": "Geocodio returned no match"}
+    top = results[0] if isinstance(results[0], dict) else {}
+    accuracy = top.get("accuracy")
+    accuracy_type = top.get("accuracy_type")
+    match_type = top.get("match_type")
+    try:
+        score_ok = (
+            accuracy is None
+            or float(accuracy) >= GEOCODIO_FOUND_MIN_SCORE
+        )
+    except (TypeError, ValueError):
+        score_ok = False
+    out = {
+        **base,
+        "standardized_address": top.get("formatted_address"),
+        "accuracy": accuracy,
+        "accuracy_type": accuracy_type,
+        "match_type": match_type,
+        "location": top.get("location"),
+        "source_name": top.get("source"),
+    }
+    if accuracy_type == "rooftop" and score_ok:
+        out["status"] = "FOUND"
+        if match_type == "parcel_centroid":
+            out["note"] = "parcel-centroid match"
+    elif accuracy_type == "range_interpolation" and score_ok:
+        out["status"] = "FOUND"
+        out["weak"] = True
+        out["note"] = (
+            "range interpolation — street and range exist, exact number "
+            "interpolated (weaker than rooftop)"
+        )
+    else:
+        out["status"] = "NONE"
+        out["reason"] = (
+            f"no street-level match (accuracy_type={accuracy_type}, "
+            f"accuracy={accuracy})"
+        )
+    return out
+
+
+async def census_lookup(address):
+    """Second opinion / fallback: US Census Geocoder (free, no key).
+    Confirms the address falls on a real TIGER street range — an
+    existence/range check, NOT deliverability. A match is FOUND
+    (weak, recorded as such); no match is NONE; a failed call is
+    ERR."""
+    checked_at = _utc_now()
+    base = {
+        "tool": "census",
+        "source": CENSUS_URL,
+        "status": "ERR",
+        "checked_at": checked_at,
+        "standardized_address": None,
+        "accuracy": None,
+        "accuracy_type": "range",
+        "note": "existence/range only (TIGER interpolation) — "
+                "NOT deliverability",
+    }
+    try:
+        async with _make_http_client(timeout=CENSUS_TIMEOUT) as client:
+            resp = await client.get(
+                CENSUS_URL,
+                params={
+                    "address": address,
+                    "benchmark": "Public_AR_Current",
+                    "format": "json",
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        return {
+            **base,
+            "reason": f"Census Geocoder request failed: {e}"[:500],
+        }
+    matches = ((data or {}).get("result") or {}).get("addressMatches") or []
+    if not matches:
+        return {
+            **base, "status": "NONE",
+            "reason": "Census Geocoder returned no match",
+        }
+    top = matches[0] if isinstance(matches[0], dict) else {}
+    return {
+        **base,
+        "status": "FOUND",
+        "standardized_address": top.get("matchedAddress"),
+        "coordinates": top.get("coordinates"),
+        "tiger_line": top.get("tigerLine"),
+    }
+
+
+# Nominatim rate limiting (policy: max 1 request/sec, whole app) and
+# cache (policy: results must be cached). In-memory only; the process
+# is single-instance on Render free tier.
+_nominatim_lock = asyncio.Lock()
+_nominatim_last_call = 0.0
+_nominatim_cache = {}
+
+
+def _nominatim_cache_get(key):
+    entry = _nominatim_cache.get(key)
+    if not entry:
+        return None
+    result, stored_at = entry
+    if (datetime.now(timezone.utc).timestamp() - stored_at) > NOMINATIM_CACHE_TTL:
+        _nominatim_cache.pop(key, None)
+        return None
+    return result
+
+
+def _nominatim_cache_put(key, result):
+    # Only cache definitive answers (FOUND/NONE); never cache an ERR.
+    if result.get("status") not in ("FOUND", "NONE"):
+        return
+    if len(_nominatim_cache) >= NOMINATIM_CACHE_MAX:
+        oldest = min(_nominatim_cache, key=lambda k: _nominatim_cache[k][1])
+        _nominatim_cache.pop(oldest, None)
+    _nominatim_cache[key] = (result, datetime.now(timezone.utc).timestamp())
+
+
+async def nominatim_lookup(address):
+    """Third opinion ONLY: OpenStreetMap Nominatim (free, no key).
+    Called only when Geocodio and Census disagree, or when both are
+    unavailable. Policy: max 1 request/sec (enforced with a lock),
+    descriptive User-Agent, results cached, ADDRESS TEXT ONLY — never
+    a customer name or any other personal data. A match confirms
+    existence in OSM data, not deliverability."""
+    global _nominatim_last_call
+    checked_at = _utc_now()
+    base = {
+        "tool": "nominatim",
+        "source": NOMINATIM_URL,
+        "status": "ERR",
+        "checked_at": checked_at,
+        "standardized_address": None,
+        "accuracy": None,
+        "accuracy_type": "existence",
+        "note": "existence in OSM data only — NOT deliverability",
+    }
+    cache_key = hashlib.sha256(address.strip().lower().encode()).hexdigest()
+    cached = _nominatim_cache_get(cache_key)
+    if cached is not None:
+        return {**cached, "cached": True, "checked_at": checked_at}
+    async with _nominatim_lock:
+        # Enforce the 1 request/sec policy across the whole app.
+        now = asyncio.get_running_loop().time()
+        wait = NOMINATIM_MIN_INTERVAL - (now - _nominatim_last_call)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        try:
+            async with _make_http_client(timeout=NOMINATIM_TIMEOUT) as client:
+                resp = await client.get(
+                    NOMINATIM_URL,
+                    params={
+                        "format": "jsonv2",
+                        "q": address,
+                        "addressdetails": "1",
+                        "limit": "1",
+                    },
+                    headers={"User-Agent": NOMINATIM_USER_AGENT},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as e:
+            result = {
+                **base,
+                "reason": f"Nominatim request failed: {e}"[:500],
+            }
+            return result
+        finally:
+            _nominatim_last_call = asyncio.get_running_loop().time()
+    results = data if isinstance(data, list) else []
+    if not results:
+        result = {
+            **base, "status": "NONE",
+            "reason": "Nominatim returned no match",
+        }
+        _nominatim_cache_put(cache_key, result)
+        return result
+    top = results[0] if isinstance(results[0], dict) else {}
+    result = {
+        **base,
+        "status": "FOUND",
+        "standardized_address": top.get("display_name"),
+        "accuracy": top.get("importance"),
+        "coordinates": {"lat": top.get("lat"), "lon": top.get("lon")},
+        "osm_type": top.get("type"),
+        "osm_class": top.get("class"),
+    }
+    _nominatim_cache_put(cache_key, result)
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Scan implementations
 # ---------------------------------------------------------------------------
 async def scan_phone(number):
@@ -962,6 +1387,137 @@ async def scan_username(username):
     return summary, detail
 
 
+async def verify_address(address):
+    """Address verification: parse (usaddress) -> Geocodio (primary)
+    -> Census Geocoder (fallback/second opinion) -> Nominatim (third
+    opinion, only on disagreement or when both are unavailable).
+    Returns (summary, detail). detail carries verdict (FOUND/NONE/
+    SKIP/ERR), source, standardized_address, accuracy, accuracy_type,
+    and every step with its own status and UTC timestamp.
+    Verdict rules:
+      Geocodio FOUND -> FOUND (source geocodio).
+      Geocodio NONE -> NONE (flag), Census recorded as second opinion;
+        Nominatim consulted only if Census FOUND (disagreement).
+        A Census range match does NOT override Geocodio's
+        deliverability answer — the disagreement itself is the flag.
+      Geocodio SKIP/ERR -> Census decides: FOUND (weak, source
+        census) / NONE / ERR (then Nominatim as last resort).
+    A real API answer is a real verdict even if negative; a failed
+    call is ERR, never a fake valid. A missing Geocodio key is SKIP
+    at the step level — with the Census fallback live, the key alone
+    never decides the final verdict."""
+    detail = {}
+    detail["parsed"] = parse_address(address)
+    geo = await geocodio_lookup(address)
+    detail["geocodio"] = geo
+    census = None
+    nominatim = {
+        "tool": "nominatim",
+        "status": "SKIP",
+        "reason": "not needed — Geocodio decided the verdict",
+        "checked_at": _utc_now(),
+    }
+    verdict = None
+    source = None
+    standardized = None
+    accuracy = None
+    accuracy_type = None
+    weak = False
+
+    if geo["status"] == "FOUND":
+        verdict, source = "FOUND", "geocodio"
+        standardized = geo.get("standardized_address")
+        accuracy = geo.get("accuracy")
+        accuracy_type = geo.get("accuracy_type")
+        weak = bool(geo.get("weak"))
+    else:
+        # Geocodio did not decide (NONE, SKIP, or ERR) — Census speaks.
+        census = await census_lookup(address)
+        detail["census"] = census
+        if geo["status"] == "NONE":
+            # Geocodio gave a real answer: no street-level match.
+            # A Census range match does not override a deliverability
+            # check — it is recorded, and Nominatim is consulted as
+            # the third opinion on the disagreement. Verdict stays
+            # NONE (flag for review).
+            verdict, source = "NONE", "geocodio"
+            standardized = geo.get("standardized_address")
+            accuracy = geo.get("accuracy")
+            accuracy_type = geo.get("accuracy_type")
+            if census["status"] == "FOUND":
+                nominatim = await nominatim_lookup(address)
+        elif census["status"] == "FOUND":
+            verdict, source = "FOUND", "census"
+            standardized = census.get("standardized_address")
+            accuracy = None
+            accuracy_type = "range"
+            weak = True
+        elif census["status"] == "NONE":
+            verdict, source = "NONE", "census"
+            standardized = None
+            accuracy = None
+            accuracy_type = None
+        else:  # Census ERR and Geocodio SKIP/ERR: Nominatim last resort.
+            nominatim = await nominatim_lookup(address)
+            if nominatim["status"] == "FOUND":
+                verdict, source = "FOUND", "nominatim"
+                standardized = nominatim.get("standardized_address")
+                accuracy = nominatim.get("accuracy")
+                accuracy_type = "existence"
+                weak = True
+            elif nominatim["status"] == "NONE":
+                verdict, source = "NONE", "nominatim"
+            else:
+                verdict, source = "ERR", None
+    if census is None:
+        detail["census"] = {
+            "tool": "census",
+            "status": "SKIP",
+            "reason": "not needed — Geocodio decided the verdict",
+            "checked_at": _utc_now(),
+        }
+    detail["nominatim"] = nominatim
+    detail["verdict"] = verdict
+    detail["source"] = source
+    detail["standardized_address"] = standardized
+    detail["accuracy"] = accuracy
+    detail["accuracy_type"] = accuracy_type
+    detail["weak"] = weak
+    detail["checked_at"] = _utc_now()
+    # Known-scam / known-good lookups (same pattern as the other scans).
+    verified = await supabase_lookup_verified(standardized or address, "address")
+    detail["known_scam"] = verified is not None
+    detail["verified_scam"] = verified
+    known_valid = await supabase_lookup_valid(standardized or address, "address")
+    detail["known_valid"] = known_valid is not None
+    detail["verified_valid"] = known_valid
+
+    summary_bits = []
+    if verdict == "FOUND":
+        summary_bits.append(
+            f"address verified via {source}"
+            + (" (weak — range/existence only)" if weak else "")
+        )
+    elif verdict == "NONE":
+        summary_bits.append(
+            f"no street-level match (flag for review; source {source})"
+        )
+    elif verdict == "SKIP":
+        summary_bits.append(
+            "verification skipped (no Geocodio key and no fallback answer)"
+        )
+    else:
+        summary_bits.append("verification failed (see step details)")
+    if standardized:
+        summary_bits.append(f"standardized: {standardized}")
+    if accuracy is not None:
+        summary_bits.append(f"accuracy: {accuracy} ({accuracy_type})")
+    if verified:
+        summary_bits.append("KNOWN SCAM — address in verified_scams")
+    summary = "; ".join(summary_bits)
+    return summary, detail
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -970,7 +1526,7 @@ async def health():
     return {
         "status": "ok",
         "service": "scam-intel-api",
-        "version": "3.0.0-phase1.2",
+        "version": "3.0.0-phase1.3",
         "supabase_configured": _supabase_configured(),
     }
 
@@ -1072,6 +1628,59 @@ async def api_scan_username(request: Request, _auth: bool = Depends(require_toke
         "result": detail,
         "known_scam": detail.get("known_scam", False),
         "stored": row is not None,
+    }
+
+
+@app.post("/address/verify")
+async def api_address_verify(request: Request, _auth: bool = Depends(require_token)):
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    target = (data.get("target") or "").strip()
+    if not target or not validate_target("address", target):
+        return _bad_request("Invalid address.")
+    async with _scan_semaphore:
+        summary, detail = await verify_address(target)
+    # Target type for the scans row. The scans CHECK constraint does
+    # not yet list 'address' (migration:
+    # scans-add-address-type.sql, run in the Supabase SQL editor);
+    # until it lands, address scans are stored as 'other' so the row
+    # is never lost. After the migration, switch this back to
+    # 'address' and backfill:
+    #   UPDATE scans SET target_type='address'
+    #   WHERE tool='address_check';
+    row = await supabase_insert_scan(
+        "address_check", target, "other", summary, detail, "complete"
+    )
+    # Verified-good addresses upsert into verified_valid (the good
+    # list), keyed on the standardized address when available so
+    # "123 Main St" and "123 Main Street" match. This complements
+    # Stripe AVS/Radar — it does not replace it.
+    valid_row = None
+    if detail.get("verdict") == "FOUND":
+        valid_target = detail.get("standardized_address") or target
+        valid_row = await supabase_upsert_valid(
+            valid_target, "address", detail.get("source"),
+            detail,
+            f"Address verified via {detail.get('source')}: "
+            f"{detail.get('accuracy_type')} "
+            f"(accuracy {detail.get('accuracy')})",
+        )
+    return {
+        "scan_id": row.get("id") if row else None,
+        "tool": "address_check",
+        "target": target,
+        "target_type": "address",
+        "status": "complete",
+        "result_summary": summary,
+        "result": detail,
+        "verdict": detail.get("verdict"),
+        "source": detail.get("source"),
+        "standardized_address": detail.get("standardized_address"),
+        "accuracy": detail.get("accuracy"),
+        "accuracy_type": detail.get("accuracy_type"),
+        "known_scam": detail.get("known_scam", False),
+        "known_valid": detail.get("known_valid", False),
+        "stored": row is not None,
+        "verified_valid_id": valid_row.get("id") if valid_row else None,
     }
 
 

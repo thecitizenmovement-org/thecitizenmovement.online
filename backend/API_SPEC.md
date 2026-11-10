@@ -1,4 +1,4 @@
-# Scam Intel API — Specification (v3.0 Phase 1)
+# Scam Intel API — Specification (v3.0 Phase 1.3)
 
 Base URL (local dev): `http://127.0.0.1:8000`
 Binds **127.0.0.1 only**. Never expose publicly. The hosted service runs on
@@ -41,7 +41,7 @@ Response `200`:
 {
   "status": "ok",
   "service": "scam-intel-api",
-  "version": "3.0.0-phase1.2",
+  "version": "3.0.0-phase1.3",
   "supabase_configured": true
 }
 ```
@@ -208,6 +208,82 @@ Notes:
   username is unused.
 
 Errors: `400` invalid username. `401` bad/missing token.
+
+### POST /address/verify
+
+Address check: parse with usaddress (in-process) + Geocodio (primary)
++ US Census Geocoder (fallback / second opinion) + Nominatim (third
+opinion only, on disagreement) + known-scam / known-good lookups.
+Verified-good addresses upsert into `verified_valid`
+(`target_type: "address"`). This complements Stripe AVS/Radar — it
+does not replace it.
+
+Request:
+```json
+{ "target": "1600 Amphitheatre Parkway, Mountain View, CA 94043" }
+```
+
+Response `200` — same shape as the other scans, with:
+- `tool`: `"address_check"`, `target_type`: `"address"`.
+- `verdict`: `"FOUND" | "NONE" | "SKIP" | "ERR"` (top level, and
+  inside `result`).
+- `source`: `"geocodio" | "census" | "nominatim" | null` — which
+  service produced the verdict.
+- `standardized_address`, `accuracy`, `accuracy_type` (top level,
+  and inside `result`).
+- `result.parsed`: `{ "tool": "usaddress", "status": "FOUND" |
+  "NONE" | "SKIP" | "ERR", "checked_at": "<UTC ISO>", "components":
+  { "AddressNumber", "StreetName", "PlaceName", "StateName",
+  "ZipCode", ... }, "parseable": true }`. Parsing only — never a
+  verdict by itself.
+- `result.geocodio`: `{ "tool": "geocodio", "source":
+  "https://api.geocod.io/v2.1/geocode", "status": "FOUND" | "NONE" |
+  "SKIP" | "ERR", "checked_at": "<UTC ISO>", "standardized_address",
+  "accuracy" (0–1), "accuracy_type", "match_type", "location" }`.
+  Verdict mapping: `rooftop` (parcel centroid arrives as
+  `match_type`) with score >= 0.8 → FOUND;
+  `range_interpolation` → FOUND (weak); `street_center` / `place` /
+  `county` / `state` centroid or no match → NONE. No key → SKIP
+  (no network call, never a fake clean). Bad key / 403 / 429 /
+  timeout → ERR.
+- `result.census`: `{ "tool": "census", "status": "FOUND" | "NONE" |
+  "ERR", "checked_at": "<UTC ISO>", "standardized_address",
+  "coordinates", "tiger_line" }`. Free, no key. A match confirms
+  the address falls on a real TIGER street range — existence/range
+  only, NOT deliverability (recorded on the step as a note).
+- `result.nominatim`: `{ "tool": "nominatim", "status": "FOUND" |
+  "NONE" | "SKIP" | "ERR", "checked_at": "<UTC ISO>",
+  "standardized_address", "accuracy" (importance) }`. Free, no key.
+  Third opinion only: consulted when Geocodio and Census disagree,
+  or when both are unavailable. Max 1 request/sec (enforced),
+  results cached, address text only — never a customer name.
+- `result.known_valid`: whether the address is already in
+  `verified_valid`. `verified_valid_id` (top level) is the upserted
+  row's id when the verdict is FOUND, else null.
+
+Verdict rules:
+- Geocodio FOUND → FOUND (source geocodio).
+- Geocodio NONE → NONE (flag for review). A Census range match does
+  NOT override Geocodio's deliverability answer; the disagreement
+  is recorded and Nominatim is consulted as the third opinion.
+- Geocodio SKIP/ERR → Census decides: FOUND (weak, source census) /
+  NONE / ERR (then Nominatim as last resort).
+- A real API answer is a real verdict even if negative; a failed
+  call is ERR, never a fake valid; a missing key is SKIP at the step
+  level (with the Census fallback live, the key alone never decides
+  the final verdict).
+
+Notes:
+- The `scans` row is stored with `target_type: "other"` until the
+  `scans` CHECK constraint is widened to include `"address"` (see
+  `scans-add-address-type.sql`); the row is never lost, and the
+  backfill is `UPDATE scans SET target_type='address' WHERE
+  tool='address_check'`.
+- Geocodio free tier is 2,500 lookups/day, no card. The key lives in
+  `GEOCODIO_API_KEY` (Render dashboard); it is never logged or
+  returned.
+
+Errors: `400` invalid address. `401` bad/missing token.
 
 ### POST /scam/report
 

@@ -20,6 +20,8 @@ services:
         sync: false
       - key: NUMVERIFY_API_KEY
         sync: false
+      - key: GEOCODIO_API_KEY
+        sync: false
       - key: PHONEINFOGA_BIN
         value: /app/tools/phoneinfoga
       - key: SUBFINDER_BIN

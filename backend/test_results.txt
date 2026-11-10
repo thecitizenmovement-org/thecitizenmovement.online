@@ -3,6 +3,8 @@
 [PASS] no token -> 401 — got 401
 [PASS] wrong token -> 401 — got 401
 [PASS] wrong token on check -> 401 — got 401
+[PASS] no token on address verify -> 401 — got 401
+[PASS] wrong token on address verify -> 401 — got 401
 [PASS] invalid phone 'not-a-phone' -> rejected — got 400
 [PASS] invalid phone '+15551234567; rm -rf /' -> rejected — got 400
 [PASS] invalid phone '+15551234567$(whoami)' -> rejected — got 400
@@ -13,7 +15,7 @@
 [PASS] invalid email 'user@example.com; cat /etc/pas' -> rejected — got 400
 [PASS] invalid email 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
 [PASS] invalid domain 'not a domain' -> rejected — got 400
-[PASS] invalid domain 'example.com/../../etc/passwd' -> rejected — got 403
+[PASS] invalid domain 'example.com/../../etc/passwd' -> rejected — got 400
 [PASS] invalid domain '-bad-.com' -> rejected — got 400
 [PASS] invalid domain 'example.com; whoami' -> rejected — got 400
 [PASS] invalid username 'bad user!' -> rejected — got 400
@@ -22,25 +24,29 @@
 [PASS] invalid username 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
 [PASS] backtick injection -> 400 — got 400
 [PASS] shell metachars in phone -> 400 — got 400
+[PASS] invalid address '' -> 400 — got 400
+[PASS] invalid address '1600 Main St; rm -rf /' -> 400 — got 400
+[PASS] invalid address '1600 Main St $(whoami)' -> 400 — got 400
+[PASS] invalid address 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
+[PASS] invalid address '!!!' -> 400 — got 400
+[PASS] invalid address '1600 Main St `id`' -> 400 — got 400
 [PASS] phone scan 200 — got 200
-[PASS] phone scan stored in scans — scan_id=fc1ef79a-bdb9-4bed-ab51-e57d202faf48
+[PASS] phone scan stored in scans — scan_id=818f829d-b4fd-430e-bc19-f9e5693c6126
 [PASS] phone scan known_scam false
 [PASS] phone scan has parsed result
 [PASS] phone scan numverify present — keys=['parsed', 'phoneinfoga', 'numverify', 'known_scam', 'verified_scam']
-[PASS] phone scan numverify status valid — status=ran enabled=True
-[PASS] phone scan numverify status is ran — status=ran enabled=True
-[PASS] phone scan numverify ran has real API fields — valid=False country=AS carrier='' line_type=None
-[PASS] phone scan numverify ran is not the auth failure — output=valid=False; country_code=AS; country_name=American Samoa; location=; carrier=; line_type=None
-[PASS] phone scan numverify ran has checked_at
+[PASS] phone scan numverify status valid — status=SKIP enabled=False
+[PASS] phone scan numverify status is SKIP — status=SKIP enabled=False
+[PASS] phone scan numverify SKIP without key — status=SKIP
 [PASS] email scan 200 — got 200
-[PASS] email scan stored — scan_id=d6aa2401-78f9-4388-9d10-e00b54f0ca62
+[PASS] email scan stored — scan_id=e645a9ea-f5f0-4a09-923c-1b6b5901bd77
 [PASS] email scan domain_mx present
 [PASS] email scan user_scanner present — keys=['local_part', 'domain', 'domain_mx', 'domain_a', 'domain_has_mail', 'user_scanner', 'known_scam', 'verified_scam', 'verified_scam_domain']
 [PASS] email scan user_scanner status valid — status=FOUND
-[PASS] email scan user_scanner has counts — registered=98 total=220
+[PASS] email scan user_scanner has counts — registered=3 total=220
 [PASS] email scan user_scanner has checked_at
 [PASS] domain scan 200 — got 200
-[PASS] domain scan stored — scan_id=e1717a0d-2dff-402f-ad3e-8cf0e8e8d1d7
+[PASS] domain scan stored — scan_id=6ec72f4c-d33e-4f0a-9989-fc3301e8ede1
 [PASS] domain scan dns_a present
 [PASS] domain scan rdap present
 [PASS] domain scan subfinder present — keys=['dns_a', 'dns_mx', 'dns_txt', 'rdap', 'subfinder', 'crtsh', 'subdomains', 'subdomain_count', 'known_scam', 'verified_scam']
@@ -51,8 +57,23 @@
 [PASS] domain scan subdomains list present
 [PASS] domain scan subdomain_count present
 [PASS] username scan 200 — got 200
-[PASS] username scan stored — scan_id=0f0e5d3c-bd8f-4f69-b979-59e211b664f9
+[PASS] username scan stored — scan_id=1e420bbb-676f-480f-88a8-9f1fc68fa074
 [PASS] username scan found_count present
+[PASS] address scan 200 — got 200
+[PASS] address scan stored — scan_id=dfdc3cc9-efc9-4503-9d9d-9cfd266502bb
+[PASS] address scan verdict valid — verdict=FOUND source=census
+[PASS] address scan result has steps — keys=['parsed', 'geocodio', 'census', 'nominatim', 'verdict', 'source', 'standardized_address', 'accuracy', 'accuracy_type', 'weak', 'checked_at', 'known_scam', 'verified_scam', 'known_valid', 'verified_valid']
+[PASS] address scan geocodio status valid — status=SKIP
+[PASS] address scan census status valid — status=FOUND
+[PASS] address scan nominatim status valid — status=SKIP
+[PASS] address scan parsed present — parseable=True
+[PASS] address scan has checked_at
+[PASS] address scan verdict is FOUND — verdict=FOUND source=census
+[PASS] address FOUND has standardized address — std='1600 AMPHITHEATRE PKWY, MOUNTAIN VIEW, CA, 94043'
+[PASS] address FOUND upserted into verified_valid — rows=1 std='1600 AMPHITHEATRE PKWY, MOUNTAIN VIEW, CA, 94043'
+[PASS] fake address scan 200 — got 200
+[PASS] fake address verdict never FOUND — verdict=NONE source=census
+[PASS] fake address not in verified_valid — known_valid=False
 [PASS] check unknown -> known_scam false — got 200 False
 [PASS] report synthetic phone 200 — got 200
 [PASS] report reporter_count 1 — got 1
@@ -67,7 +88,7 @@ NOTE: synthetic verified_scams row for +15559876543 is marked
 you want a clean table (DELETE FROM verified_scams WHERE
 target = '+15559876543').
 
-63/63 checks passed.
+84/84 checks passed.
 
 ---
-Phase 1.2 (Nov 10, 2026): Numverify direct API call (api.apilayer.net/numverify/api/validate) — PhoneInfoga built-in numverify scanner disabled (-D numverify, dead endpoint). Baseline was 60/60 (Phase 1.1). Local runs: no key -> SKIP 61/61; bogus key -> ERR 61/61 (no fake valid). Live Render run (real key) -> ran 63/63: numverify returns real API fields (valid, country_code, country_name, carrier, line_type), never "Invalid authentication credentials". Note: the path-traversal validation case returns 403 from Cloudflare WAF on hosted deployments (rejected at the edge) vs 400 locally — both accepted as "rejected".
+Phase 1.3 (Nov 10, 2026): POST /address/verify — usaddress parse (in-process) + Geocodio primary (api.geocod.io/v2.1/geocode, free key, 2,500/day) + US Census Geocoder fallback (free, no key; existence/range only) + Nominatim third opinion only (1 req/sec, cached, address text only). Rooftop/parcel-centroid with score >= 0.8 = FOUND; range interpolation = FOUND (weak); street-center/place/county/state centroid or no match = NONE; no key = SKIP at the step level; bad key/failed call = ERR (never a fake valid). Verified-good addresses upsert into verified_valid (target_type 'address'). Baseline was 63/63 (Phase 1.2 live). Local runs: no key -> SKIP 84/84 (Geocodio SKIP, Numverify SKIP; Census fallback gives FOUND for the real address); bogus key -> ERR 84/84 (Geocodio ERR, Numverify ERR; Census fallback still decides). Note: the path-traversal validation case returns 403 from Cloudflare WAF on hosted deployments (rejected at the edge) vs 400 locally — both accepted as "rejected". Note: `scans` CHECK constraint does not yet list 'address' (error 23514), so address scans are stored with target_type 'other' until scans-add-address-type.sql runs in the Supabase SQL editor (backfill: UPDATE scans SET target_type='address' WHERE tool='address_check'). Live Render run (real Geocodio key) -> pending below.

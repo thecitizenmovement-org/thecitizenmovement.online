@@ -55,6 +55,10 @@ is not set (random per run, dev convenience only).
 | phonenumbers 9.0.43 | Library, works locally, no network. |
 | DNS | Real DNS via DNS-over-HTTPS (Google, then Cloudflare). The local system resolver returns synthetic proxy addresses, so DoH is used. |
 | WHOIS / registrar | RDAP over HTTPS (rdap.org). Direct WHOIS (port 43) is blocked in this environment, so RDAP is the replacement. |
+| Geocodio (API v2.1) | Direct HTTPS. Primary address verification in `POST /address/verify` (free key, `GEOCODIO_API_KEY`, 2,500 lookups/day, no card). Rooftop / parcel-centroid with a high score = FOUND; range interpolation = FOUND (weak); street-center / place / county / state centroid or no match = NONE; down or no key = SKIP. |
+| US Census Geocoder | Direct HTTPS, free, no key. Address second opinion / fallback in `POST /address/verify`. Existence/range only (TIGER interpolation), NOT deliverability. |
+| Nominatim | Direct HTTPS, free, no key. Address third opinion ONLY in `POST /address/verify` (Geocodio/Census disagreement, or both unavailable). 1 request/sec, results cached, address text only — never a customer name. |
+| usaddress 0.5.16 | Library, works locally, no network. Address parsing in `POST /address/verify` — parsing only, never a verdict. |
 | Holehe, Sherlock | DROPPED per the architecture (deprecated/rotted). Not used. |
 | theHarvester | BLOCKED (evaluated Nov 10, 2026). v4.11.1 installs and its CLI runs, but its keyless sources return empty even for github.com — its aiohttp client does not use the egress proxy, and even with a proxy configured in proxies.yaml the sources return nothing in <1 s. Its dependency pins (fastapi/uvicorn) conflict with this backend's venv, it pulls in Playwright, and current master needs Python 3.14 (this backend is 3.12). Its subdomain coverage is already provided by subfinder + crt.sh. Do not re-add without verifying it returns real data first. |
 
@@ -66,6 +70,8 @@ is not set (random per run, dev convenience only).
 | `SUPABASE_URL` | — | `https://fcfsxgxqsownfywaokdp.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | — | service_role key. Bypasses RLS. Backend env only. |
 | `NUMVERIFY_API_KEY` | — | Free apilayer Numverify key. Unlocks the backend's direct Numverify API call (api.apilayer.net/numverify/api/validate) for carrier/line-type. Absent = SKIP. Invalid key = ERR (never a fake valid). |
+| `GEOCODIO_API_KEY` | — | Free geocod.io key (2,500 lookups/day, no card). Unlocks `POST /address/verify`'s primary check (api.geocod.io/v2.1/geocode). Absent = Geocodio step SKIP; the endpoint falls back to the US Census Geocoder (free, no key). Invalid key = ERR (never a fake valid). |
+| `NOMINATIM_USER_AGENT` | `ScamIntel/3.0 (thecitizenmovement.store)` | User-Agent for Nominatim (must identify the application). |
 | `SCAMINTEL_PORT` | `8000` | Binds 127.0.0.1 only. |
 | `PHONEINFOGA_BIN` | `./tools/phoneinfoga` | Path to the PhoneInfoga v2 binary. |
 | `SUBFINDER_BIN` | `./tools/subfinder` | Path to the subfinder binary. |
