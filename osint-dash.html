@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>OSINT Dashboard — Scam Intel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0d2140;--ink:#f7edcf;--gold:#c6a45d;--bright:#f1cf7a;--muted:#d8c79e;--panel:rgba(7,20,42,.88);--line:rgba(214,181,106,.58);--ok:#7fd08a;--bad:#e88;--warn:#f1cf7a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--navy);color:var(--ink);font-family:"Libre Franklin",system-ui,sans-serif;line-height:1.55}
+header.top{background:#0d2140;border-bottom:1px solid var(--line);padding:14px 22px}
+nav.primary{display:flex;gap:26px;align-items:center;max-width:1000px;margin:0 auto;flex-wrap:wrap}
+nav.primary a{color:var(--ink);text-decoration:none;font-weight:600}
+nav.primary a.brand{font-family:"Playfair Display",Georgia,serif;font-size:20px;color:var(--bright)}
+main{max-width:1000px;margin:0 auto;padding:28px 22px 48px}
+h1{font-family:"Playfair Display",Georgia,serif;font-size:32px;color:var(--bright);margin:6px 0 8px}
+.sub{color:var(--muted);margin:0 0 20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px;margin:0 0 20px;position:relative}
+.panel::before,.panel::after{content:"";position:absolute;width:18px;height:18px;border:2px solid var(--gold);pointer-events:none}
+.panel::before{top:-2px;left:-2px;border-right:none;border-bottom:none}
+.panel::after{bottom:-2px;right:-2px;border-left:none;border-top:none}
+.panel h2,.panel h3{font-family:"Playfair Display",Georgia,serif;color:var(--bright);margin:0 0 10px}
+.panel p{line-height:1.6;margin:0 0 10px}
+.panel a{color:var(--bright)}
+.field{width:100%;padding:12px;border:1px solid var(--line);background:rgba(0,0,0,.26);color:var(--ink);border-radius:6px;margin:6px 0 10px;font:inherit}
+textarea.field{min-height:84px;resize:vertical}
+select.field{appearance:none}
+label{display:block;margin:10px 0 4px;color:var(--muted);font-size:.9rem}
+.auth-tabs{display:flex;gap:8px;margin:12px 0}
+.auth-tabs button{flex:1;min-height:44px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;cursor:pointer;border-radius:6px}
+.auth-tabs button.active{background:rgba(198,164,93,.16);color:var(--bright);border-color:var(--bright)}
+.scan-tabs{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+.scan-tabs button{flex:1;min-width:110px;min-height:44px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;cursor:pointer;border-radius:6px}
+.scan-tabs button.active{background:rgba(198,164,93,.16);color:var(--bright);border-color:var(--bright)}
+.btn{display:inline-block;min-height:48px;padding:12px 20px;border:1px solid var(--bright);background:linear-gradient(180deg,#d6ae52,#9e741c);color:#0b1830;text-decoration:none;font-weight:800;cursor:pointer;border-radius:6px;margin-top:14px}
+.btn.ghost{background:transparent;color:var(--bright)}
+.btn.small{min-height:38px;padding:8px 14px;font-size:.9rem;margin-top:0}
+.btn:disabled{opacity:.55;cursor:wait}
+.muted.small{font-size:.85rem;color:var(--muted)}
+.coming{min-height:24px;margin:12px 0 0;color:var(--bright);font-size:.9rem}
+.toast{position:fixed;z-index:99;left:50%;bottom:22px;transform:translate(-50%,130%);padding:13px 18px;background:#f1cf7a;color:#071227;border:1px solid #fff1bd;font-weight:700;transition:transform .25s;max-width:92vw;text-align:center}
+.toast.show{transform:translate(-50%,0)}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 12px;color:var(--muted);font-size:.9rem}
+.meta button{background:transparent;border:1px solid var(--line);color:var(--bright);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:700}
+.result{margin-top:12px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:rgba(0,0,0,.22);white-space:pre-wrap;word-break:break-word}
+.result.ok{border-color:var(--ok)}
+.result.err{border-color:var(--bad)}
+.result.warn{border-color:var(--warn)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.8rem;font-weight:700;border:1px solid var(--line)}
+.badge.complete{color:var(--ok);border-color:var(--ok)}
+.badge.failed{color:var(--bad);border-color:var(--bad)}
+.badge.pending{color:var(--warn);border-color:var(--warn)}
+.scan-row{border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin:0 0 12px;background:rgba(0,0,0,.18)}
+.scan-row .top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.scan-row .target{font-weight:700;word-break:break-all}
+.scan-row .when{color:var(--muted);font-size:.85rem}
+.scan-row .summary{margin:8px 0 0}
+.scan-row details{margin-top:8px}
+.scan-row summary{cursor:pointer;color:var(--bright);font-size:.9rem}
+.scan-row pre{background:rgba(0,0,0,.35);padding:10px;border-radius:6px;overflow:auto;font-size:.8rem;white-space:pre-wrap;word-break:break-word}
+.status-line{font-weight:700}
+.status-line.ok{color:var(--ok)}
+.status-line.err{color:var(--bad)}
+.status-line.warn{color:var(--warn)}
+@media (max-width:640px){
+  h1{font-size:26px}
+  .panel{padding:18px 16px}
+  nav.primary{gap:14px}
+}
+</style>
+</head>
+<body>
+<header class="top"><nav class="primary">
+<a class="brand" href="./">The United Citizens of America</a>
+<a href="./">Home</a><a href="./foundry.html">Foundry</a><a href="./founder.html">Founder Dashboard</a><a href="https://thecitizenmovement.org">.org</a><a href="https://thecitizenmovement.store">Store</a>
+</nav></header>
+<main>
+<p id="gate-loading" class="sub">Loading…</p>
+
+<div id="gate-signin" hidden>
+<div class="panel login-panel" id="member-panel"><div id="member-auth-box"><h3>Member Sign In</h3><p class="coming">Loading member system…</p></div></div>
+<p class="sub">Sign in to continue. Membership is free.</p>
+</div>
+
+<div id="dash" hidden>
+<h1>OSINT Dashboard</h1>
+<p class="sub">Scam Intel — run checks, see your scan history, and check the shared known-scam list.</p>
+<div class="meta"><span id="dash-who"></span><span><button id="dash-signout" type="button">Sign out</button></span></div>
+
+<div class="panel" id="backend-panel">
+<h2>Scan backend</h2>
+<p>The scan tools (PhoneInfoga, Maigret, DNS/RDAP) run in the Phase 1 backend API. It runs on localhost only right now — until it is hosted, scans from this page will report that the backend is not hosted yet.</p>
+<label for="backend-url">Backend base URL</label>
+<input class="field" id="backend-url" type="text" autocomplete="off" spellcheck="false">
+<label for="backend-token">Backend API token</label>
+<input class="field" id="backend-token" type="password" autocomplete="off" placeholder="SCAMINTEL_API_TOKEN from the backend's .env">
+<p class="muted small">The token is kept only in this browser tab (session storage). It is sent only to the backend URL above, and never written to any page or file. The backend prints it on startup when it is not set in its environment.</p>
+<button class="btn small" id="backend-test" type="button">Test connection</button>
+<p class="status-line" id="backend-status" aria-live="polite"></p>
+</div>
+
+<div class="panel" id="scan-panel">
+<h2>Run a scan</h2>
+<div class="scan-tabs" role="tablist">
+<button type="button" data-scan="phone" class="active">Phone</button>
+<button type="button" data-scan="email">Email</button>
+<button type="button" data-scan="domain">Domain</button>
+<button type="button" data-scan="username">Username</button>
+</div>
+<label for="scan-target" id="scan-target-label">Phone number</label>
+<input class="field" id="scan-target" type="text" autocomplete="off" spellcheck="false" placeholder="+15551234567">
+<button class="btn" id="scan-run" type="button">→ RUN SCAN</button>
+<p class="muted small" id="scan-note">Phone: carrier, region and validity from the number itself, plus a PhoneInfoga v2 pass. Username checks run Maigret against the top 50 sites and can take a minute or more — please wait for it to finish.</p>
+<div class="result" id="scan-result" hidden></div>
+</div>
+
+<div class="panel" id="check-panel">
+<h2>Known-scam check</h2>
+<p>Check a phone, email, domain or username against the shared verified-scam list.</p>
+<label for="check-target">Target</label>
+<input class="field" id="check-target" type="text" autocomplete="off" spellcheck="false" placeholder="+15551234567 or example.com">
+<label for="check-type">Type</label>
+<select class="field" id="check-type">
+<option value="phone">Phone</option>
+<option value="email">Email</option>
+<option value="domain">Domain</option>
+<option value="other">Other</option>
+</select>
+<button class="btn" id="check-run" type="button">→ CHECK</button>
+<div class="result" id="check-result" hidden></div>
+</div>
+
+<div class="panel" id="report-panel">
+<h2>Report a verified scam</h2>
+<p>Log a scam you have verified so other members see it in the known-scam check. Reports go through the backend, which is the only writer to the shared list.</p>
+<label for="report-target">Target</label>
+<input class="field" id="report-target" type="text" autocomplete="off" spellcheck="false" placeholder="+15551234567 or example.com">
+<label for="report-type">Type</label>
+<select class="field" id="report-type">
+<option value="phone">Phone</option>
+<option value="email">Email</option>
+<option value="domain">Domain</option>
+<option value="other">Other</option>
+</select>
+<label for="report-evidence">Evidence — what happened, briefly</label>
+<textarea class="field" id="report-evidence" maxlength="4000" placeholder="Called claiming to be the IRS; asked for gift cards."></textarea>
+<button class="btn" id="report-run" type="button">→ REPORT SCAM</button>
+<div class="result" id="report-result" hidden></div>
+</div>
+
+<div class="panel" id="history-panel">
+<h2>Your scan history</h2>
+<p class="muted small">Newest first. Only your own scans are shown.</p>
+<button class="btn small" id="history-refresh" type="button">Refresh history</button>
+<div id="history-list" style="margin-top:16px"></div>
+<p class="muted small" id="history-note"></p>
+</div>
+
+<div class="panel" id="limits-panel">
+<h2>What this page cannot do yet</h2>
+<p><strong>Backend is hosted on Render (free tier).</strong> The backend lives at scam-intel-backend.onrender.com. The free tier sleeps after 15 minutes idle, so the first scan after a pause can take about a minute to wake up — signing in pings it awake. If a scan says the backend is unreachable, wait a minute and try again.</p>
+<p><strong>Scan history needs Phase 2 auth.</strong> Members sign in through the citizen-members project, but the scan tables live in the separate scam-intel project, whose row-level security only accepts that project's own session tokens. Until Phase 2 wires Supabase JWT auth into the backend (or the projects share an auth setup), your history may come back empty here even though scans were stored. The backend still records every scan it runs.</p>
+<p><strong>No quotas or payments yet.</strong> Stripe gating and usage quotas arrive in Phase 3.</p>
+</div>
+</div>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+/* ============================================================
+   OSINT Dashboard — Scam Intel v3.0
+   Single configurable constant for the scan backend:
+   ============================================================ */
+var BACKEND_BASE_URL = 'https://scam-intel-backend.onrender.com';
+
+/* Supabase projects.
+   - AUTH_* : citizen-members — member sign-in (same as foundry.html /
+     members.js). The anon key is public by design; RLS enforces access.
+   - DATA_* : scam-intel — the scans + verified_scams tables.
+     Its anon key is also public by design. Never put a service_role
+     key in a page: the backend (service role) is the only writer. */
+var AUTH_URL = 'https://jesrbqrwbacuirwxbkis.supabase.co';
+var AUTH_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc';
+var DATA_URL = 'https://fcfsxgxqsownfywaokdp.supabase.co';
+var DATA_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjZnN4Z3hxc293bmZ5d2Fva2RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTA4NDIsImV4cCI6MjEwNzIyNjg0Mn0.jQGAYrilBpcebTisepwMITNSe797VqwgLoLMw6smkBE';
+
+/* Scan endpoints + per-type timeouts (Maigret is slow by design). */
+var SCAN_TIMEOUTS = { phone: 120000, email: 60000, domain: 60000, username: 200000 };
+var SCAN_LABELS = { phone: 'Phone number', email: 'Email address', domain: 'Domain', username: 'Username' };
+var SCAN_PLACEHOLDERS = { phone: '+15551234567', email: 'someone@example.com', domain: 'example.com', username: 'someusername' };
+
+var authClient = null;
+var session = null;
+var authMode = 'login';
+var scanType = 'phone';
+var backendReachable = null; /* null = untested, true/false = last /health result */
+
+/* ---------- small helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function show(el){ if(el) el.hidden = false; }
+function hide(el){ if(el) el.hidden = true; }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+  });
+}
+function say(text){
+  var t = $('toast');
+  if(!t) return;
+  t.textContent = text;
+  t.classList.add('show');
+  clearTimeout(say._t);
+  say._t = setTimeout(function(){ t.classList.remove('show'); }, 3600);
+}
+function fmtDate(iso){
+  try { return new Date(iso).toLocaleString(undefined, { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' }); }
+  catch(e){ return iso; }
+}
+function backendBase(){
+  var v = ($('backend-url') && $('backend-url').value || '').trim();
+  return (v || BACKEND_BASE_URL).replace(/\/+$/, '');
+}
+/* Wake the Render backend on sign-in. The free tier sleeps after 15 min
+   idle and takes ~50s to wake; a no-cors fire-and-forget ping to /health
+   starts the wake-up so the first scan does not hit a cold start. The
+   response is opaque by design — we only need the request to reach Render. */
+function wakeBackend(){
+  try{
+    fetch(backendBase() + '/health', { method: 'GET', mode: 'no-cors', cache: 'no-store' }).catch(function(){});
+  }catch(e){}
+}
+function backendToken(){
+  return ($('backend-token') && $('backend-token').value || '').trim();
+}
+function setResult(el, kind, text){
+  if(!el) return;
+  el.hidden = false;
+  el.className = 'result' + (kind ? ' ' + kind : '');
+  el.textContent = text;
+}
+function fetchWithTimeout(url, opts, ms){
+  var ctrl = new AbortController();
+  var timer = setTimeout(function(){ ctrl.abort(); }, ms);
+  var o = opts || {};
+  o.signal = ctrl.signal;
+  return fetch(url, o).finally(function(){ clearTimeout(timer); });
+}
+
+/* ---------- member auth (same pattern as members.js) ---------- */
+function authMsg(t){ var m = $('m-msg'); if(m) m.textContent = t; }
+
+function renderAuth(){
+  var box = $('member-auth-box');
+  if(!box) return;
+  if(session){
+    var meta = (session.user && session.user.user_metadata) || {};
+    var name = meta.display_name || 'Citizen';
+    box.innerHTML =
+      '<h3>Welcome, ' + esc(name) + '</h3>' +
+      '<p class="muted small">' + esc(session.user.email || '') + '</p>' +
+      '<button class="btn ghost" id="member-signout" type="button">Sign out</button>';
+    var so = $('member-signout');
+    if(so) so.addEventListener('click', function(){
+      authClient.auth.signOut().then(function(){ session = null; renderAll(); say('Signed out.'); });
+    });
+    return;
+  }
+  box.innerHTML =
+    '<h3>Member Sign In</h3>' +
+    '<div class="auth-tabs" role="tablist">' +
+    '<button type="button" id="tab-login" class="' + (authMode === 'login' ? 'active' : '') + '">Sign in</button>' +
+    '<button type="button" id="tab-join" class="' + (authMode === 'join' ? 'active' : '') + '">Join free</button></div>' +
+    (authMode === 'join' ? '<label for="m-name">Display name</label><input class="field" id="m-name" autocomplete="nickname" placeholder="What should we call you?">' : '') +
+    '<label for="m-email">Email</label><input class="field" id="m-email" type="email" autocomplete="email" placeholder="you@example.com">' +
+    '<label for="m-pass">Password</label><input class="field" id="m-pass" type="password" autocomplete="' + (authMode === 'join' ? 'new-password' : 'current-password') + '" placeholder="' + (authMode === 'join' ? 'Choose a password' : 'Your password') + '">' +
+    '<button class="btn" id="m-go" type="button">' + (authMode === 'join' ? '→ JOIN FREE' : '→ SIGN IN') + '</button>' +
+    '<p class="muted small" style="margin-top:10px"><a href="#" id="m-forgot">Forgot password?</a></p>' +
+    '<p class="coming" id="m-msg" aria-live="polite"></p>';
+  $('tab-login').addEventListener('click', function(){ authMode = 'login'; renderAuth(); });
+  $('tab-join').addEventListener('click', function(){ authMode = 'join'; renderAuth(); });
+  $('m-go').addEventListener('click', authGo);
+  $('m-pass').addEventListener('keydown', function(e){ if(e.key === 'Enter') authGo(); });
+  $('m-forgot').addEventListener('click', authForgot);
+}
+
+async function authGo(){
+  var email = $('m-email').value.trim(), pass = $('m-pass').value;
+  if(!email || !pass){ authMsg('Enter your email and password.'); return; }
+  if(authMode === 'join' && pass.length < 6){ authMsg('Password needs at least 6 characters.'); return; }
+  authMsg(authMode === 'join' ? 'Creating your membership…' : 'Signing you in…');
+  try{
+    if(authMode === 'join'){
+      var name = $('m-name') ? $('m-name').value.trim() : '';
+      var r = await authClient.auth.signUp({ email: email, password: pass, options: { data: { display_name: name } } });
+      if(r.error){
+        authMsg(/already registered/i.test(r.error.message) ? 'That email is already a member — switch to Sign in.' : r.error.message);
+        return;
+      }
+      if(r.data.session){ await refreshSession(); say('Welcome to the movement.'); }
+      else { authMsg('Check your email to confirm, then sign in.'); say('Confirmation email sent — check your inbox.'); }
+    } else {
+      var s = await authClient.auth.signInWithPassword({ email: email, password: pass });
+      if(s.error){ authMsg(s.error.message); return; }
+      await refreshSession(); say('Signed in. Welcome back.');
+    }
+  }catch(e){ authMsg('Something went wrong. Try again.'); }
+}
+
+async function authForgot(e){
+  if(e) e.preventDefault();
+  var email = $('m-email') ? $('m-email').value.trim() : '';
+  if(!email){ authMsg('Enter your email above first.'); return; }
+  authMsg('Sending reset link…');
+  var r = await authClient.auth.resetPasswordForEmail(email);
+  if(r.error){ authMsg(r.error.message); return; }
+  authMsg('Check your email — the reset link is good for 60 minutes.');
+}
+
+async function refreshSession(){
+  try{
+    var s = await authClient.auth.getSession();
+    session = (s.data && s.data.session) || null;
+  }catch(e){ session = null; }
+  if(session){ wakeBackend(); }
+  renderAll();
+}
+
+function renderAll(){
+  hide($('gate-loading'));
+  if(!session){ hide($('dash')); show($('gate-signin')); renderAuth(); return; }
+  hide($('gate-signin'));
+  show($('dash'));
+  renderAuth();
+  $('dash-who').textContent = 'Signed in as ' + (session.user.email || '');
+  var so = $('dash-signout');
+  if(so && !so.__bound){
+    so.__bound = true;
+    so.addEventListener('click', function(){
+      authClient.auth.signOut().then(function(){ session = null; renderAll(); say('Signed out.'); });
+    });
+  }
+  loadHistory();
+}
+
+/* ---------- backend: health, scans, check, report ---------- */
+async function testBackend(){
+  var st = $('backend-status');
+  var base = backendBase();
+  st.className = 'status-line';
+  st.textContent = 'Checking ' + base + ' …';
+  try{
+    var r = await fetchWithTimeout(base + '/health', { method: 'GET' }, 10000);
+    if(!r.ok){ backendReachable = false; st.className = 'status-line err'; st.textContent = 'Backend answered but unhealthy (HTTP ' + r.status + ').'; return; }
+    var j = await r.json();
+    backendReachable = true;
+    st.className = 'status-line ok';
+    st.textContent = 'Backend reachable — ' + (j.service || 'scam-intel-api') + ' ' + (j.version || '') + ', Supabase ' + (j.supabase_configured ? 'configured' : 'NOT configured') + '.';
+  }catch(e){
+    backendReachable = false;
+    st.className = 'status-line err';
+    st.textContent = 'Backend not reachable at ' + base + '. It runs on localhost only and is not hosted yet — scans cannot run from this page until it is. (If you are running it locally, check the URL and that ./run.sh is up.)';
+  }
+}
+
+function needToken(){
+  if(backendToken()) return true;
+  say('Enter the backend API token first.');
+  return false;
+}
+
+async function runScan(){
+  var target = ($('scan-target').value || '').trim();
+  var res = $('scan-result');
+  if(!target){ setResult(res, 'err', 'Enter a ' + SCAN_LABELS[scanType].toLowerCase() + ' first.'); return; }
+  if(backendReachable === false){
+    setResult(res, 'err', 'Scan backend is unreachable right now — it may be waking up (the free tier sleeps when idle, about a minute to wake). Wait a minute and try again.');
+    return;
+  }
+  if(!needToken()){ setResult(res, 'warn', 'Enter the backend API token above first. It is the SCAMINTEL_API_TOKEN from the backend’s .env — the backend prints it on startup when it is not set.'); return; }
+  var btn = $('scan-run');
+  btn.disabled = true;
+  setResult(res, '', 'Running ' + scanType + ' scan… ' + (scanType === 'username' ? 'Maigret checks the top 50 sites — this can take a minute or more. Please wait.' : ''));
+  try{
+    var r = await fetchWithTimeout(backendBase() + '/scan/' + scanType, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + backendToken() },
+      body: JSON.stringify({ target: target })
+    }, SCAN_TIMEOUTS[scanType]);
+    var j = null;
+    try{ j = await r.json(); }catch(e){}
+    if(r.status === 401){ setResult(res, 'err', 'Backend refused the API token (401). Check the token — it is the SCAMINTEL_API_TOKEN from the backend’s .env.'); return; }
+    if(r.status === 400){ setResult(res, 'err', 'Invalid target: ' + ((j && j.detail) || 'the backend rejected this input.')); return; }
+    if(!r.ok){ setResult(res, 'err', 'Backend error (HTTP ' + r.status + '). Nothing was faked — no result to show.'); return; }
+    backendReachable = true;
+    var lines = [];
+    lines.push('Target: ' + j.target + ' (' + j.target_type + ')');
+    lines.push('Tool: ' + j.tool + '  •  Status: ' + j.status);
+    lines.push('Summary: ' + (j.result_summary || '(none)'));
+    lines.push('Known scam: ' + (j.known_scam ? 'YES — this target is on the verified-scam list.' : 'No.'));
+    lines.push('Stored in your scan history: ' + (j.stored ? 'yes (scan id ' + (j.scan_id || '') + ')' : 'NO — the backend could not write to Supabase.'));
+    setResult(res, j.known_scam ? 'warn' : 'ok', lines.join('\n'));
+    loadHistory();
+  }catch(e){
+    var aborted = e && e.name === 'AbortError';
+    setResult(res, 'err', aborted
+      ? 'Scan timed out (' + Math.round(SCAN_TIMEOUTS[scanType] / 1000) + 's). The backend may still be working on it — check your history after a refresh.'
+      : 'Could not reach the scan backend at ' + backendBase() + '. It is not hosted yet — it runs on localhost only. Nothing was faked.');
+    backendReachable = false;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+async function runCheck(){
+  var target = ($('check-target').value || '').trim();
+  var type = $('check-type').value;
+  var res = $('check-result');
+  if(!target){ setResult(res, 'err', 'Enter a target first.'); return; }
+  setResult(res, '', 'Checking…');
+  /* Path 1: direct read of verified_scams with the member session.
+     RLS allows authenticated members to read every row. */
+  try{
+    var q = DATA_URL + '/rest/v1/verified_scams?select=target,target_type,evidence,reporter_count,first_seen,last_seen'
+      + '&target=eq.' + encodeURIComponent(target)
+      + '&target_type=eq.' + encodeURIComponent(type);
+    var r = await fetchWithTimeout(q, {
+      method: 'GET',
+      headers: { 'apikey': DATA_ANON_KEY, 'Authorization': 'Bearer ' + (session ? session.access_token : ''), 'Accept': 'application/json' }
+    }, 15000);
+    if(r.ok){
+      var rows = await r.json();
+      if(rows && rows.length){
+        var row = rows[0];
+        setResult(res, 'warn', 'KNOWN SCAM (via shared database)\nTarget: ' + row.target + ' (' + row.target_type + ')\nReported by ' + (row.reporter_count || 1) + ' member(s). Last seen: ' + fmtDate(row.last_seen) + '.\nEvidence: ' + (row.evidence || '(none recorded)'));
+      } else {
+        setResult(res, 'ok', 'Not on the verified-scam list (via shared database).\nTarget: ' + target + ' (' + type + ')\nThat does not prove it is safe — it only means no member has verified it as a scam yet.');
+      }
+      return;
+    }
+    if(r.status === 401){ throw new Error('auth-401'); }
+    throw new Error('http-' + r.status);
+  }catch(e){
+    /* Path 2: backend known-scam lookup (service-role read, works when
+       the backend is reachable and the API token is set). */
+    if(backendToken() && backendReachable !== false){
+      try{
+        var r2 = await fetchWithTimeout(backendBase() + '/scam/check?target=' + encodeURIComponent(target), {
+          method: 'GET',
+          headers: { 'Authorization': 'Bearer ' + backendToken() }
+        }, 15000);
+        if(r2.ok){
+          var j2 = await r2.json();
+          if(j2.known_scam && j2.verified_scam){
+            var v = j2.verified_scam;
+            setResult(res, 'warn', 'KNOWN SCAM (via backend)\nTarget: ' + v.target + ' (' + v.target_type + ')\nReported by ' + (v.reporter_count || 1) + ' member(s). Last seen: ' + fmtDate(v.last_seen) + '.\nEvidence: ' + (v.evidence || '(none recorded)'));
+          } else {
+            setResult(res, 'ok', 'Not on the verified-scam list (via backend).\nTarget: ' + target + ' (' + type + ')\nThat does not prove it is safe — it only means no member has verified it as a scam yet.');
+          }
+          return;
+        }
+      }catch(e2){ /* fall through to the honest error below */ }
+    }
+    setResult(res, 'err', 'Could not check the shared list. The direct database read needs a session the scam-intel project accepts (Phase 2 auth work), and the backend lookup needs the backend reachable with its API token. Nothing was faked — no answer to show.');
+  }
+}
+
+async function runReport(){
+  var target = ($('report-target').value || '').trim();
+  var type = $('report-type').value;
+  var evidence = ($('report-evidence').value || '').trim();
+  var res = $('report-result');
+  if(!target){ setResult(res, 'err', 'Enter a target first.'); return; }
+  if(!evidence){ setResult(res, 'err', 'Add a line of evidence — what happened, briefly.'); return; }
+  if(backendReachable === false){
+    setResult(res, 'err', 'Scan backend is not hosted yet — reports go through the backend, which is the only writer to the shared list. Run it locally, or wait for it to be hosted.');
+    return;
+  }
+  if(!needToken()){ setResult(res, 'warn', 'Enter the backend API token above first. It is the SCAMINTEL_API_TOKEN from the backend’s .env.'); return; }
+  var btn = $('report-run');
+  btn.disabled = true;
+  setResult(res, '', 'Reporting…');
+  try{
+    var r = await fetchWithTimeout(backendBase() + '/scam/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + backendToken() },
+      body: JSON.stringify({ target: target, target_type: type, evidence: evidence })
+    }, 30000);
+    var j = null;
+    try{ j = await r.json(); }catch(e){}
+    if(r.status === 401){ setResult(res, 'err', 'Backend refused the API token (401). Check the token.'); return; }
+    if(r.status === 400){ setResult(res, 'err', 'Report rejected: ' + ((j && j.detail) || 'check the target, type and evidence.')); return; }
+    if(!r.ok){ setResult(res, 'err', 'Backend error (HTTP ' + r.status + '). The report was not saved.'); return; }
+    backendReachable = true;
+    setResult(res, 'ok', 'Reported. ' + j.target + ' (' + j.target_type + ') is now on the verified-scam list — reporter count ' + j.reporter_count + '.');
+    $('report-target').value = '';
+    $('report-evidence').value = '';
+  }catch(e){
+    setResult(res, 'err', 'Could not reach the scan backend at ' + backendBase() + '. It is not hosted yet — it runs on localhost only. The report was not saved.');
+    backendReachable = false;
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+/* ---------- scan history (member's own rows, RLS) ----------
+   The member's session belongs to the citizen-members project, while
+   the scans table lives in the scam-intel project. The member's access
+   token is sent as the Bearer token so RLS can apply (members read
+   only their own scans). A plain REST call is used here instead of a
+   second supabase-js client, because a second client would try to
+   refresh this session against the wrong project's Auth server.
+   Until Phase 2 wires cross-project JWT auth, this read may come back
+   empty or 401 even when scans exist — the note below says so plainly. */
+async function loadHistory(){
+  var list = $('history-list');
+  var note = $('history-note');
+  if(!session){ list.innerHTML = ''; note.textContent = ''; return; }
+  list.innerHTML = '<p class="muted small">Loading your scans…</p>';
+  note.textContent = '';
+  try{
+    var q = DATA_URL + '/rest/v1/scans?select=id,tool,target,target_type,result_summary,status,created_at&order=created_at.desc&limit=50';
+    var r = await fetchWithTimeout(q, {
+      method: 'GET',
+      headers: { 'apikey': DATA_ANON_KEY, 'Authorization': 'Bearer ' + session.access_token, 'Accept': 'application/json' }
+    }, 15000);
+    if(r.status === 401){
+      list.innerHTML = '';
+      note.textContent = 'History is not available right now: the scam-intel database did not accept this sign-in session (it only accepts its own project’s tokens). This is the known Phase 2 auth gap — the backend still records every scan it runs, and history will light up once JWT auth is wired.';
+      return;
+    }
+    if(!r.ok){
+      list.innerHTML = '';
+      note.textContent = 'Could not load history (HTTP ' + r.status + '). Try the refresh button again.';
+      return;
+    }
+    var rows = await r.json();
+    if(!rows || !rows.length){
+      list.innerHTML = '';
+      note.textContent = 'No scans in your history yet. Run a scan above — once the backend is reachable, new scans appear here after a refresh. (If you have scanned before and this is empty, it is the known Phase 2 auth gap: the scam-intel database only accepts its own project’s session tokens.)';
+      return;
+    }
+    var html = '';
+    rows.forEach(function(row){
+      html += '<div class="scan-row">'
+        + '<div class="top"><span class="target">' + esc(row.target) + '</span>'
+        + '<span class="badge ' + esc(row.status || '') + '">' + esc(row.status || '') + '</span></div>'
+        + '<div class="when">' + esc(row.tool || '') + ' • ' + esc(row.target_type || '') + ' • ' + esc(fmtDate(row.created_at)) + '</div>'
+        + (row.result_summary ? '<p class="summary">' + esc(row.result_summary) + '</p>' : '')
+        + '</div>';
+    });
+    list.innerHTML = html;
+    note.textContent = rows.length + ' scan(s) shown, newest first.';
+  }catch(e){
+    list.innerHTML = '';
+    note.textContent = 'Could not load history — check your connection and try the refresh button again.';
+  }
+}
+
+/* ---------- wiring + init ---------- */
+function bindDash(){
+  var urlInput = $('backend-url');
+  var savedUrl = null, savedToken = null;
+  try{ savedUrl = localStorage.getItem('osint_backend_url'); savedToken = sessionStorage.getItem('osint_api_token'); }catch(e){}
+  urlInput.value = savedUrl || BACKEND_BASE_URL;
+  if(savedToken) $('backend-token').value = savedToken;
+  urlInput.addEventListener('change', function(){
+    try{ localStorage.setItem('osint_backend_url', backendBase()); }catch(e){}
+    backendReachable = null;
+    $('backend-status').textContent = '';
+  });
+  $('backend-token').addEventListener('change', function(){
+    try{ sessionStorage.setItem('osint_api_token', backendToken()); }catch(e){}
+  });
+  $('backend-test').addEventListener('click', testBackend);
+
+  var tabs = document.querySelectorAll('#scan-panel .scan-tabs button');
+  tabs.forEach(function(b){
+    b.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      scanType = b.getAttribute('data-scan');
+      $('scan-target-label').textContent = SCAN_LABELS[scanType];
+      var inp = $('scan-target');
+      inp.placeholder = SCAN_PLACEHOLDERS[scanType];
+      inp.value = '';
+      var res = $('scan-result');
+      res.hidden = true; res.textContent = '';
+    });
+  });
+  $('scan-run').addEventListener('click', runScan);
+  $('scan-target').addEventListener('keydown', function(e){ if(e.key === 'Enter') runScan(); });
+  $('check-run').addEventListener('click', runCheck);
+  $('check-target').addEventListener('keydown', function(e){ if(e.key === 'Enter') runCheck(); });
+  $('report-run').addEventListener('click', runReport);
+  $('history-refresh').addEventListener('click', loadHistory);
+}
+
+function init(){
+  if(!window.supabase){
+    $('gate-loading').textContent = 'The member system could not load. Check your connection and refresh.';
+    return;
+  }
+  authClient = window.supabase.createClient(AUTH_URL, AUTH_ANON_KEY);
+  authClient.auth.onAuthStateChange(function(){ refreshSession(); });
+  bindDash();
+  refreshSession();
+}
+
+if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', init); }
+else { init(); }
+})();
+</script>
+</body>
+</html>
