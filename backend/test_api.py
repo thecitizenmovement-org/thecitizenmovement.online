@@ -40,6 +40,36 @@ def main():
     # IPv6 entries that httpx cannot parse. Localhost needs no proxy.
     client = httpx.Client(base_url=BASE, timeout=300, trust_env=False)
 
+    # Cleanup: the battery's own synthetic verified_scams row
+    # (+15559876543) persists between runs — delete it up front so
+    # repeated runs are idempotent ("check unknown" and the
+    # reporter_count assertions assume a clean table). Uses the same
+    # Supabase service credentials the server uses; skipped silently
+    # when they are not in the test environment. Needs the egress
+    # proxy explicitly (this VM cannot reach Supabase directly).
+    _sb_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    _sb_key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    _proxy = (
+        os.environ.get("https_proxy")
+        or os.environ.get("HTTPS_PROXY")
+        or os.environ.get("http_proxy")
+        or os.environ.get("HTTP_PROXY")
+    )
+    if _sb_url and _sb_key:
+        try:
+            _sb_client = httpx.Client(
+                timeout=30, trust_env=False, proxy=_proxy
+            )
+            _sb_client.delete(
+                f"{_sb_url}/rest/v1/verified_scams",
+                params={"target": "eq.+15559876543"},
+                headers={"apikey": _sb_key,
+                         "Authorization": f"Bearer {_sb_key}"},
+            )
+            _sb_client.close()
+        except Exception:
+            pass
+
     # --- Health (no auth) ---
     r = client.get("/health")
     check("health returns 200", r.status_code == 200, f"got {r.status_code}")
@@ -101,17 +131,47 @@ def main():
     check("phone scan known_scam false", body.get("known_scam") is False)
     check("phone scan has parsed result",
           isinstance(body.get("result", {}).get("parsed"), dict))
-    # numverify step: present with a valid status. Without a key it must
+    # numverify step: direct Numverify API call (Phase 1.2 fix — the
+    # backend calls https://api.apilayer.net/numverify/api/validate
+    # directly; PhoneInfoga's built-in numverify scanner hits a dead
+    # endpoint and misreports it as "Invalid authentication
+    # credentials"). Present with a valid status. Without a key it must
     # be SKIP (never a fake clean); with a key it must be ran/ERR.
+    # NUMVERIFY_EXPECTED (env) pins the expected status for this run:
+    #   SKIP = server started without a key
+    #   ERR  = server started with an invalid key
+    #   ran  = server started with a valid key (live Render)
     nv = body.get("result", {}).get("numverify", {})
     check("phone scan numverify present", bool(nv),
           f"keys={list(body.get('result', {}).keys())}")
     check("phone scan numverify status valid",
           nv.get("status") in ("SKIP", "ran", "ERR"),
           f"status={nv.get('status')} enabled={nv.get('enabled')}")
-    if not nv.get("enabled"):
+    expected_nv = os.environ.get("NUMVERIFY_EXPECTED", "").strip()
+    if expected_nv:
+        check(f"phone scan numverify status is {expected_nv}",
+              nv.get("status") == expected_nv,
+              f"status={nv.get('status')} enabled={nv.get('enabled')}")
+    if nv.get("status") == "ran":
+        # Real API fields must be present; the old failure mode
+        # ("Invalid authentication credentials") must never appear.
+        check("phone scan numverify ran has real API fields",
+              all(k in nv for k in ("valid", "country_code", "carrier", "line_type")),
+              f"valid={nv.get('valid')} country={nv.get('country_code')} carrier={nv.get('carrier')!r} line_type={nv.get('line_type')!r}")
+        check("phone scan numverify ran is not the auth failure",
+              "Invalid authentication credentials" not in str(nv.get("output", "")),
+              f"output={str(nv.get('output', ''))[:120]}")
+        check("phone scan numverify ran has checked_at",
+              bool(nv.get("checked_at")))
+    elif nv.get("status") == "ERR":
+        # An invalid key must be ERR, never a fake "valid" result.
+        check("phone scan numverify ERR claims no valid data",
+              nv.get("valid") is not True
+              and "valid: true" not in str(nv.get("output", "")).lower(),
+              f"status={nv.get('status')} reason={str(nv.get('reason', ''))[:120]}")
+    elif nv.get("status") == "SKIP":
         check("phone scan numverify SKIP without key",
-              nv.get("status") == "SKIP",
+              nv.get("enabled") is False and nv.get("status") == "SKIP",
               f"status={nv.get('status')}")
 
     # Email.

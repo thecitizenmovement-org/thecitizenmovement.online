@@ -23,21 +23,22 @@
 [PASS] backtick injection -> 400 — got 400
 [PASS] shell metachars in phone -> 400 — got 400
 [PASS] phone scan 200 — got 200
-[PASS] phone scan stored in scans — scan_id=831d2930-584a-4bd0-96eb-e7b59f6a75b7
+[PASS] phone scan stored in scans — scan_id=89a847dc-6ba9-49bc-96d9-21b1a408a60f
 [PASS] phone scan known_scam false
 [PASS] phone scan has parsed result
 [PASS] phone scan numverify present — keys=['parsed', 'phoneinfoga', 'numverify', 'known_scam', 'verified_scam']
 [PASS] phone scan numverify status valid — status=SKIP enabled=False
+[PASS] phone scan numverify status is SKIP — status=SKIP enabled=False
 [PASS] phone scan numverify SKIP without key — status=SKIP
 [PASS] email scan 200 — got 200
-[PASS] email scan stored — scan_id=2d39972a-0d54-4b54-8a57-df4a762cd1c4
+[PASS] email scan stored — scan_id=e7de3ecf-979d-48bd-8d67-57d86032c318
 [PASS] email scan domain_mx present
 [PASS] email scan user_scanner present — keys=['local_part', 'domain', 'domain_mx', 'domain_a', 'domain_has_mail', 'user_scanner', 'known_scam', 'verified_scam', 'verified_scam_domain']
 [PASS] email scan user_scanner status valid — status=FOUND
-[PASS] email scan user_scanner has counts — registered=30 total=220
+[PASS] email scan user_scanner has counts — registered=14 total=220
 [PASS] email scan user_scanner has checked_at
 [PASS] domain scan 200 — got 200
-[PASS] domain scan stored — scan_id=2569c7dc-5d90-4002-921c-d2c32b72b77b
+[PASS] domain scan stored — scan_id=96e6b2f7-c96c-442d-a682-aa03bd128f68
 [PASS] domain scan dns_a present
 [PASS] domain scan rdap present
 [PASS] domain scan subfinder present — keys=['dns_a', 'dns_mx', 'dns_txt', 'rdap', 'subfinder', 'crtsh', 'subdomains', 'subdomain_count', 'known_scam', 'verified_scam']
@@ -48,7 +49,7 @@
 [PASS] domain scan subdomains list present
 [PASS] domain scan subdomain_count present
 [PASS] username scan 200 — got 200
-[PASS] username scan stored — scan_id=6fdf6ab4-6eb1-48f2-8e8f-d563a8e21a6d
+[PASS] username scan stored — scan_id=883376fb-77fb-4618-bec6-a05bc8f3e70b
 [PASS] username scan found_count present
 [PASS] check unknown -> known_scam false — got 200 False
 [PASS] report synthetic phone 200 — got 200
@@ -64,7 +65,7 @@ NOTE: synthetic verified_scams row for +15559876543 is marked
 you want a clean table (DELETE FROM verified_scams WHERE
 target = '+15559876543').
 
-60/60 checks passed.
+61/61 checks passed.
 
 ---
-Phase 1.1 (Nov 10, 2026): user-scanner (email), subfinder + crt.sh (domain), Numverify status (phone). Baseline was 46/46; 14 new checks added, all passing.
+Phase 1.2 (Nov 10, 2026): Numverify direct API call (api.apilayer.net/numverify/api/validate) — PhoneInfoga built-in numverify scanner disabled (-D numverify, dead endpoint). Baseline was 60/60 (Phase 1.1); 1 new check added (NUMVERIFY_EXPECTED pin), all passing. Local runs: no key -> SKIP 61/61; bogus key -> ERR 61/61 (no fake valid). Live Render run (real key) -> ran, pending deploy.

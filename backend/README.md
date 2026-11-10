@@ -47,7 +47,7 @@ is not set (random per run, dev convenience only).
 
 | Tool | Status in this VM |
 |------|-------------------|
-| PhoneInfoga v2.11.0 | Runs. Default scanners return Google-search URL lists unless API keys are configured. `phonenumbers` gives the reliable local carrier/region/validity signal. With `NUMVERIFY_API_KEY` set (free apilayer key), its numverify scanner returns real carrier/line-type. |
+| PhoneInfoga v2.11.0 | Runs. Default scanners return Google-search URL lists unless API keys are configured. `phonenumbers` gives the reliable local carrier/region/validity signal. Its built-in numverify scanner is DISABLED (`-D numverify`): it calls a dead endpoint (api.apilayer.com/number_verification/validate, Cloudflare 504) and misreports it as "Invalid authentication credentials". Carrier/line-type comes from a direct Numverify API call instead (see below). |
 | user-scanner 1.5.2.5 | Runs. Email registration check (220 modules, ~80 s) wired into `/scan/email`. NEVER run with `--hudson` (infostealer corpus — prohibited). Full username run (2,510+ sites) takes >4 min and is too slow for a synchronous call, so Maigret covers username. |
 | subfinder v2.17.0 | Runs. Passive subdomain enumeration wired into `/scan/domain` (keyless sources only). In proxied environments the backend passes the egress proxy via subfinder's `-proxy` flag; on direct internet the flag is omitted. |
 | crt.sh (direct HTTPS) | Works. Certificate-transparency subdomain data, a second subdomain source alongside subfinder in `/scan/domain`. |
@@ -65,7 +65,7 @@ is not set (random per run, dev convenience only).
 | `SCAMINTEL_API_TOKEN` | (random per run) | Bearer token callers must send. |
 | `SUPABASE_URL` | — | `https://fcfsxgxqsownfywaokdp.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | — | service_role key. Bypasses RLS. Backend env only. |
-| `NUMVERIFY_API_KEY` | — | Free apilayer Numverify key. Unlocks PhoneInfoga's carrier/line-type scanner. Absent = that scanner is SKIP. |
+| `NUMVERIFY_API_KEY` | — | Free apilayer Numverify key. Unlocks the backend's direct Numverify API call (api.apilayer.net/numverify/api/validate) for carrier/line-type. Absent = SKIP. Invalid key = ERR (never a fake valid). |
 | `SCAMINTEL_PORT` | `8000` | Binds 127.0.0.1 only. |
 | `PHONEINFOGA_BIN` | `./tools/phoneinfoga` | Path to the PhoneInfoga v2 binary. |
 | `SUBFINDER_BIN` | `./tools/subfinder` | Path to the subfinder binary. |

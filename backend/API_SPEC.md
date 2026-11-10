@@ -41,7 +41,7 @@ Response `200`:
 {
   "status": "ok",
   "service": "scam-intel-api",
-  "version": "3.0.0-phase1",
+  "version": "3.0.0-phase1.2",
   "supabase_configured": true
 }
 ```
@@ -92,10 +92,18 @@ Notes:
   (not configured). The `phonenumbers` parse is the reliable local signal.
 - `valid: false` for 555-01xx numbers is expected — they are fictional.
 - `result.numverify`: when `NUMVERIFY_API_KEY` is set (free apilayer
-  key), PhoneInfoga's numverify scanner returns real carrier and line
-  type (mobile / landline / VoIP). When the key is absent the entry is
-  `{ "enabled": false, "status": "SKIP", ... }` — a skip, never a fake
-  clean. The key is never returned in the response.
+  key), the backend calls the Numverify API directly at
+  https://api.apilayer.net/numverify/api/validate and returns real
+  carrier and line type (mobile / landline / VoIP) plus `valid`,
+  `country_code`, `country_name`, `location`, and the full API JSON
+  under `details`. PhoneInfoga's built-in numverify scanner is NOT
+  used — it calls a dead endpoint (api.apilayer.com/number_verification
+  /validate, Cloudflare 504) and misreports the failure as "Invalid
+  authentication credentials"; it is disabled with `-D numverify` and
+  PhoneInfoga's other scanners still run. When the key is absent the
+  entry is `{ "enabled": false, "status": "SKIP", ... }` — a skip,
+  never a fake clean. An invalid key is `ERR`, never a fake valid.
+  The key is never returned in the response.
 
 Errors: `400` invalid phone number. `401` bad/missing token.
 

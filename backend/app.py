@@ -22,7 +22,15 @@ Security properties:
     key, which bypasses RLS, so it can write to `scans`/`verified_scams`.
 
 Tools (per ARCHITECTURE.md §2, plus Copilot's Nov 10, 2026 tooling report):
-  - PhoneInfoga v2 (Go binary) — phone/carrier/VOIP lookups.
+  - PhoneInfoga v2 (Go binary) — phone/carrier/VOIP lookups. Its
+    built-in numverify scanner is DISABLED (-D numverify): it calls a
+    dead endpoint (api.apilayer.com/number_verification/validate,
+    Cloudflare 504) and misreports it as "Invalid authentication
+    credentials". Carrier/line-type comes from a direct Numverify API
+    call instead (see numverify_lookup).
+  - Numverify (direct HTTPS call) — carrier/line-type/validity via
+    https://api.apilayer.net/numverify/api/validate (free apilayer
+    key, NUMVERIFY_API_KEY). Absent key = SKIP, invalid key = ERR.
   - Maigret — username checks (top-sites subset; full 509-site run is
     too slow for a synchronous API call).
   - user-scanner — email registration checks (210+ sites) and a second
@@ -135,11 +143,18 @@ SUBFINDER_EXCLUDE_SOURCES = os.environ.get(
     "SUBFINDER_EXCLUDE_SOURCES", "anubis,crtname,subdomaincenter"
 )
 
-# Numverify (free apilayer key) unlocks PhoneInfoga's carrier/line-type
-# scanner. Absent = that scanner is SKIP (never fake clean). The key is
-# read from the environment only; PhoneInfoga inherits it via the
-# subprocess environment. Never hardcode it.
+# Numverify (free apilayer key) — carrier/line-type via a DIRECT API
+# call (see numverify_lookup). PhoneInfoga's built-in numverify scanner
+# is NOT used: it calls the dead endpoint
+# https://api.apilayer.com/number_verification/validate (Cloudflare
+# 504) and misreports the failure as "Invalid authentication
+# credentials". The working endpoint, confirmed live Nov 10, 2026, is
+# https://api.apilayer.net/numverify/api/validate. Absent key = SKIP
+# (never fake clean). The key is read from the environment only and
+# is never logged or returned. Never hardcode it.
 NUMVERIFY_API_KEY = os.environ.get("NUMVERIFY_API_KEY", "")
+NUMVERIFY_URL = "https://api.apilayer.net/numverify/api/validate"
+NUMVERIFY_TIMEOUT = int(os.environ.get("NUMVERIFY_TIMEOUT", "15"))
 
 # DoH resolvers (JSON API). Google first, Cloudflare fallback.
 DOH_URLS = [
@@ -182,7 +197,7 @@ def validate_target(kind, target):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Scam Intel API",
-    version="3.0.0-phase1.1",
+    version="3.0.0-phase1.2",
     description="Phase 1 scan backend for Scam Intel v3.0. Binds localhost only.",
 )
 security = HTTPBearer(auto_error=False)
@@ -494,6 +509,79 @@ async def crtsh_lookup(domain):
 
 
 # ---------------------------------------------------------------------------
+# Numverify (direct API call — carrier/line-type for phone scans)
+# ---------------------------------------------------------------------------
+async def numverify_lookup(number):
+    """Carrier/line-type/validity via the Numverify API, called DIRECTLY.
+    PhoneInfoga's built-in numverify scanner calls the dead endpoint
+    https://api.apilayer.com/number_verification/validate (Cloudflare
+    504) and misreports the failure as "Invalid authentication
+    credentials", so the backend does not rely on it. The working
+    endpoint, confirmed live Nov 10, 2026 (direct browser test, quota
+    0/100 -> 2/100), is https://api.apilayer.net/numverify/api/validate
+    with access_key + number as query params.
+    Returns a dict keeping the existing numverify shape (enabled,
+    status, checked_at, note, output) plus the API's fields (valid,
+    country_code, country_name, location, carrier, line_type) and the
+    full API JSON under "details" on success. Status: "ran" on a real
+    API answer (even valid=false for fictional numbers — that is real
+    data), "ERR" on any failure (never a fake valid), "SKIP" when no
+    key is set. The key is never logged or returned."""
+    checked_at = _utc_now()
+    base = {
+        "enabled": bool(NUMVERIFY_API_KEY),
+        "checked_at": checked_at,
+        "note": "carrier/line-type via Numverify (free key set)",
+    }
+    if not NUMVERIFY_API_KEY:
+        return {
+            **base,
+            "enabled": False,
+            "status": "SKIP",
+            "reason": "NUMVERIFY_API_KEY not set (free key from apilayer.com unlocks carrier/line-type)",
+        }
+    try:
+        async with _make_http_client(timeout=NUMVERIFY_TIMEOUT) as client:
+            resp = await client.get(
+                NUMVERIFY_URL,
+                params={"access_key": NUMVERIFY_API_KEY, "number": number},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception as e:
+        return {
+            **base,
+            "status": "ERR",
+            "reason": f"Numverify request failed: {e}"[:500],
+        }
+    if not isinstance(data, dict) or data.get("success") is False:
+        err = (data or {}).get("error") or {}
+        return {
+            **base,
+            "status": "ERR",
+            "reason": (
+                f"Numverify API error {err.get('code')}: {err.get('type')}"
+            )[:500],
+        }
+    # Real answer — even valid=false is real data (e.g. fictional 555
+    # numbers). Never claim more than the API returned.
+    fields = {
+        "valid": data.get("valid"),
+        "country_code": data.get("country_code"),
+        "country_name": data.get("country_name"),
+        "location": data.get("location"),
+        "carrier": data.get("carrier"),
+        "line_type": data.get("line_type"),
+    }
+    summary = (
+        f"valid={fields['valid']}; country_code={fields['country_code']}; "
+        f"country_name={fields['country_name']}; location={fields['location']}; "
+        f"carrier={fields['carrier']}; line_type={fields['line_type']}"
+    )
+    return {**base, "status": "ran", "output": summary, **fields, "details": data}
+
+
+# ---------------------------------------------------------------------------
 # user-scanner (email registration + username) — NEVER passes --hudson
 # ---------------------------------------------------------------------------
 async def run_user_scanner(target, kind):
@@ -706,40 +794,24 @@ async def scan_phone(number):
     except Exception as e:
         detail["parsed"] = {"error": str(e)}
 
-    # PhoneInfoga v2 (Go binary, arg-list, timeout).
-    # NUMVERIFY_API_KEY: when set in the backend environment, PhoneInfoga
-    # inherits it (subprocess env) and its numverify scanner returns real
-    # carrier/line-type. When absent that scanner is SKIP (never fake
-    # clean). The key is never logged or returned in the response.
+    # PhoneInfoga v2 (Go binary, arg-list, timeout). Its numverify
+    # scanner is disabled (-D numverify): it calls the dead endpoint
+    # https://api.apilayer.com/number_verification/validate (Cloudflare
+    # 504, misreported as "Invalid authentication credentials"). The
+    # other scanners (googlesearch etc.) still run. Carrier/line-type
+    # comes from a direct Numverify API call below instead.
     pi_output, pi_ok = await run_cmd_async(
-        [PHONEINFOGA_BIN, "scan", "-n", number], PHONEINFOGA_TIMEOUT
+        [PHONEINFOGA_BIN, "scan", "-n", number, "-D", "numverify"],
+        PHONEINFOGA_TIMEOUT,
     )
     detail["phoneinfoga"] = {
         "ran": pi_ok,
         "output": pi_output[:8000],
     }
-    if NUMVERIFY_API_KEY:
-        numverify_ran = "numverify" in pi_output.lower()
-        detail["numverify"] = {
-            "enabled": True,
-            "status": "ran" if numverify_ran else "ERR",
-            "checked_at": _utc_now(),
-            "note": "carrier/line-type via Numverify (free key set)",
-        }
-        if numverify_ran:
-            # Surface the numverify line(s) from the PhoneInfoga output.
-            nv_lines = [
-                ln for ln in pi_output.splitlines()
-                if "numverify" in ln.lower()
-            ]
-            detail["numverify"]["output"] = "\n".join(nv_lines)[:1000]
-    else:
-        detail["numverify"] = {
-            "enabled": False,
-            "status": "SKIP",
-            "checked_at": _utc_now(),
-            "reason": "NUMVERIFY_API_KEY not set (free key from apilayer.com unlocks carrier/line-type)",
-        }
+    # Numverify direct call (working endpoint). The number is passed in
+    # E.164 when the local parse produced one, else the raw target.
+    nv_number = (detail.get("parsed") or {}).get("e164") or number
+    detail["numverify"] = await numverify_lookup(nv_number)
 
     # Known-scam lookup.
     verified = await supabase_lookup_verified(number, "phone")
@@ -898,7 +970,7 @@ async def health():
     return {
         "status": "ok",
         "service": "scam-intel-api",
-        "version": "3.0.0-phase1.1",
+        "version": "3.0.0-phase1.2",
         "supabase_configured": _supabase_configured(),
     }
 
