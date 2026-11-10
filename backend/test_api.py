@@ -36,9 +36,20 @@ def auth_headers(token=None):
 
 
 def main():
-    # trust_env=False: the runtime's NO_PROXY list contains bracketed
-    # IPv6 entries that httpx cannot parse. Localhost needs no proxy.
-    client = httpx.Client(base_url=BASE, timeout=300, trust_env=False)
+    # Remote base URLs (e.g. live Render) need the egress proxy;
+    # localhost needs none. The runtime's NO_PROXY list breaks httpx
+    # parsing, so trust_env stays False and the proxy is passed
+    # explicitly when the target is not local.
+    _proxy = None
+    if "127.0.0.1" not in BASE and "localhost" not in BASE:
+        _proxy = (
+            os.environ.get("https_proxy")
+            or os.environ.get("HTTPS_PROXY")
+            or os.environ.get("http_proxy")
+            or os.environ.get("HTTP_PROXY")
+        )
+    client = httpx.Client(base_url=BASE, timeout=300, trust_env=False,
+                          proxy=_proxy)
 
     # Cleanup: the battery's own synthetic verified_scams row
     # (+15559876543) persists between runs — delete it up front so
@@ -108,8 +119,12 @@ def main():
     for kind, target in bad_cases:
         r = client.post(f"/scan/{kind}", json={"target": target},
                         headers=auth_headers())
-        check(f"invalid {kind} {target[:30]!r} -> 400",
-              r.status_code == 400, f"got {r.status_code}")
+        # The path-traversal payload may be rejected at the edge (403
+        # from Cloudflare's WAF on hosted deployments) instead of by
+        # the app (400) — either way it is rejected, never executed.
+        want = (400, 403) if "../" in target else (400,)
+        check(f"invalid {kind} {target[:30]!r} -> rejected",
+              r.status_code in want, f"got {r.status_code}")
 
     # Path traversal / injection as a target value (must not execute).
     r = client.post("/scan/domain", json={"target": "example.com`id`"},

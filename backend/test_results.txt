@@ -3,42 +3,44 @@
 [PASS] no token -> 401 — got 401
 [PASS] wrong token -> 401 — got 401
 [PASS] wrong token on check -> 401 — got 401
-[PASS] invalid phone 'not-a-phone' -> 400 — got 400
-[PASS] invalid phone '+15551234567; rm -rf /' -> 400 — got 400
-[PASS] invalid phone '+15551234567$(whoami)' -> 400 — got 400
-[PASS] invalid phone '' -> 400 — got 400
-[PASS] invalid phone 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
-[PASS] invalid email 'not-an-email' -> 400 — got 400
-[PASS] invalid email 'a@b' -> 400 — got 400
-[PASS] invalid email 'user@example.com; cat /etc/pas' -> 400 — got 400
-[PASS] invalid email 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
-[PASS] invalid domain 'not a domain' -> 400 — got 400
-[PASS] invalid domain 'example.com/../../etc/passwd' -> 400 — got 400
-[PASS] invalid domain '-bad-.com' -> 400 — got 400
-[PASS] invalid domain 'example.com; whoami' -> 400 — got 400
-[PASS] invalid username 'bad user!' -> 400 — got 400
-[PASS] invalid username '../etc/passwd' -> 400 — got 400
-[PASS] invalid username 'user; rm -rf /' -> 400 — got 400
-[PASS] invalid username 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> 400 — got 400
+[PASS] invalid phone 'not-a-phone' -> rejected — got 400
+[PASS] invalid phone '+15551234567; rm -rf /' -> rejected — got 400
+[PASS] invalid phone '+15551234567$(whoami)' -> rejected — got 400
+[PASS] invalid phone '' -> rejected — got 400
+[PASS] invalid phone 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
+[PASS] invalid email 'not-an-email' -> rejected — got 400
+[PASS] invalid email 'a@b' -> rejected — got 400
+[PASS] invalid email 'user@example.com; cat /etc/pas' -> rejected — got 400
+[PASS] invalid email 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
+[PASS] invalid domain 'not a domain' -> rejected — got 400
+[PASS] invalid domain 'example.com/../../etc/passwd' -> rejected — got 403
+[PASS] invalid domain '-bad-.com' -> rejected — got 400
+[PASS] invalid domain 'example.com; whoami' -> rejected — got 400
+[PASS] invalid username 'bad user!' -> rejected — got 400
+[PASS] invalid username '../etc/passwd' -> rejected — got 400
+[PASS] invalid username 'user; rm -rf /' -> rejected — got 400
+[PASS] invalid username 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
 [PASS] backtick injection -> 400 — got 400
 [PASS] shell metachars in phone -> 400 — got 400
 [PASS] phone scan 200 — got 200
-[PASS] phone scan stored in scans — scan_id=89a847dc-6ba9-49bc-96d9-21b1a408a60f
+[PASS] phone scan stored in scans — scan_id=fc1ef79a-bdb9-4bed-ab51-e57d202faf48
 [PASS] phone scan known_scam false
 [PASS] phone scan has parsed result
 [PASS] phone scan numverify present — keys=['parsed', 'phoneinfoga', 'numverify', 'known_scam', 'verified_scam']
-[PASS] phone scan numverify status valid — status=SKIP enabled=False
-[PASS] phone scan numverify status is SKIP — status=SKIP enabled=False
-[PASS] phone scan numverify SKIP without key — status=SKIP
+[PASS] phone scan numverify status valid — status=ran enabled=True
+[PASS] phone scan numverify status is ran — status=ran enabled=True
+[PASS] phone scan numverify ran has real API fields — valid=False country=AS carrier='' line_type=None
+[PASS] phone scan numverify ran is not the auth failure — output=valid=False; country_code=AS; country_name=American Samoa; location=; carrier=; line_type=None
+[PASS] phone scan numverify ran has checked_at
 [PASS] email scan 200 — got 200
-[PASS] email scan stored — scan_id=e7de3ecf-979d-48bd-8d67-57d86032c318
+[PASS] email scan stored — scan_id=d6aa2401-78f9-4388-9d10-e00b54f0ca62
 [PASS] email scan domain_mx present
 [PASS] email scan user_scanner present — keys=['local_part', 'domain', 'domain_mx', 'domain_a', 'domain_has_mail', 'user_scanner', 'known_scam', 'verified_scam', 'verified_scam_domain']
 [PASS] email scan user_scanner status valid — status=FOUND
-[PASS] email scan user_scanner has counts — registered=14 total=220
+[PASS] email scan user_scanner has counts — registered=98 total=220
 [PASS] email scan user_scanner has checked_at
 [PASS] domain scan 200 — got 200
-[PASS] domain scan stored — scan_id=96e6b2f7-c96c-442d-a682-aa03bd128f68
+[PASS] domain scan stored — scan_id=e1717a0d-2dff-402f-ad3e-8cf0e8e8d1d7
 [PASS] domain scan dns_a present
 [PASS] domain scan rdap present
 [PASS] domain scan subfinder present — keys=['dns_a', 'dns_mx', 'dns_txt', 'rdap', 'subfinder', 'crtsh', 'subdomains', 'subdomain_count', 'known_scam', 'verified_scam']
@@ -49,7 +51,7 @@
 [PASS] domain scan subdomains list present
 [PASS] domain scan subdomain_count present
 [PASS] username scan 200 — got 200
-[PASS] username scan stored — scan_id=883376fb-77fb-4618-bec6-a05bc8f3e70b
+[PASS] username scan stored — scan_id=0f0e5d3c-bd8f-4f69-b979-59e211b664f9
 [PASS] username scan found_count present
 [PASS] check unknown -> known_scam false — got 200 False
 [PASS] report synthetic phone 200 — got 200
@@ -65,7 +67,7 @@ NOTE: synthetic verified_scams row for +15559876543 is marked
 you want a clean table (DELETE FROM verified_scams WHERE
 target = '+15559876543').
 
-61/61 checks passed.
+63/63 checks passed.
 
 ---
-Phase 1.2 (Nov 10, 2026): Numverify direct API call (api.apilayer.net/numverify/api/validate) — PhoneInfoga built-in numverify scanner disabled (-D numverify, dead endpoint). Baseline was 60/60 (Phase 1.1); 1 new check added (NUMVERIFY_EXPECTED pin), all passing. Local runs: no key -> SKIP 61/61; bogus key -> ERR 61/61 (no fake valid). Live Render run (real key) -> ran, pending deploy.
+Phase 1.2 (Nov 10, 2026): Numverify direct API call (api.apilayer.net/numverify/api/validate) — PhoneInfoga built-in numverify scanner disabled (-D numverify, dead endpoint). Baseline was 60/60 (Phase 1.1). Local runs: no key -> SKIP 61/61; bogus key -> ERR 61/61 (no fake valid). Live Render run (real key) -> ran 63/63: numverify returns real API fields (valid, country_code, country_name, carrier, line_type), never "Invalid authentication credentials". Note: the path-traversal validation case returns 403 from Cloudflare WAF on hosted deployments (rejected at the edge) vs 400 locally — both accepted as "rejected".
