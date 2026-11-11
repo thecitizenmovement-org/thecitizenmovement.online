@@ -15,7 +15,7 @@
 [PASS] invalid email 'user@example.com; cat /etc/pas' -> rejected — got 400
 [PASS] invalid email 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' -> rejected — got 400
 [PASS] invalid domain 'not a domain' -> rejected — got 400
-[PASS] invalid domain 'example.com/../../etc/passwd' -> rejected — got 400
+[PASS] invalid domain 'example.com/../../etc/passwd' -> rejected — got 403
 [PASS] invalid domain '-bad-.com' -> rejected — got 400
 [PASS] invalid domain 'example.com; whoami' -> rejected — got 400
 [PASS] invalid username 'bad user!' -> rejected — got 400
@@ -31,47 +31,49 @@
 [PASS] invalid address '!!!' -> 400 — got 400
 [PASS] invalid address '1600 Main St `id`' -> 400 — got 400
 [PASS] phone scan 200 — got 200
-[PASS] phone scan stored in scans — scan_id=afb89deb-e83b-4a83-9f0f-ae0af18415d1
+[PASS] phone scan stored in scans — scan_id=1c92259c-7817-424f-8a0e-7094e2e061cf
 [PASS] phone scan known_scam false
 [PASS] phone scan has parsed result
 [PASS] phone scan numverify present — keys=['parsed', 'phoneinfoga', 'numverify', 'known_scam', 'verified_scam']
 [PASS] phone scan numverify status valid — status=SKIP enabled=False
+[PASS] phone scan numverify status is SKIP — status=SKIP enabled=False
 [PASS] phone scan numverify SKIP without key — status=SKIP
 [PASS] phone scan numverify SKIP reason names the cause — reason=NUMVERIFY_ENABLED is off (default) — Numverify call skipped to preserve the free 100/month quota; carrier/line-type come
 [PASS] email scan 200 — got 200
-[PASS] email scan stored — scan_id=a9f2bd88-b036-40ac-ae14-68097e77c3ab
+[PASS] email scan stored — scan_id=7f8426e5-a62e-417e-b2b6-decb828b293d
 [PASS] email scan domain_mx present
 [PASS] email scan user_scanner present — keys=['local_part', 'domain', 'domain_mx', 'domain_a', 'domain_has_mail', 'user_scanner', 'known_scam', 'verified_scam', 'verified_scam_domain']
 [PASS] email scan user_scanner status valid — status=FOUND
-[PASS] email scan user_scanner has counts — registered=4 total=220
+[PASS] email scan user_scanner has counts — registered=96 total=220
 [PASS] email scan user_scanner has checked_at
 [PASS] domain scan 200 — got 200
-[PASS] domain scan stored — scan_id=fe2b8662-b5e8-4be0-8154-e51f645d9b26
+[PASS] domain scan stored — scan_id=51d22a1f-9c40-4318-9ec8-7db64dc057af
 [PASS] domain scan dns_a present
 [PASS] domain scan rdap present
 [PASS] domain scan subfinder present — keys=['dns_a', 'dns_mx', 'dns_txt', 'rdap', 'subfinder', 'crtsh', 'subdomains', 'subdomain_count', 'known_scam', 'verified_scam']
 [PASS] domain scan subfinder status valid — status=FOUND
 [PASS] domain scan subfinder has checked_at
 [PASS] domain scan crtsh present
-[PASS] domain scan crtsh status valid — status=ERR
+[PASS] domain scan crtsh status valid — status=FOUND
 [PASS] domain scan subdomains list present
 [PASS] domain scan subdomain_count present
 [PASS] username scan 200 — got 200
-[PASS] username scan stored — scan_id=ac0283c7-02cc-435e-8964-c8b913d8bd14
+[PASS] username scan stored — scan_id=1b52fd49-ba7e-4b0b-873a-a0ac0e4ffd79
 [PASS] username scan found_count present
 [PASS] address scan 200 — got 200
-[PASS] address scan stored — scan_id=d7217936-d2ed-496b-988c-2a4ca8d4033d
-[PASS] address scan verdict valid — verdict=FOUND source=census
+[PASS] address scan stored — scan_id=74eb8aa9-0430-410c-97a0-e8dce856febe
+[PASS] address scan verdict valid — verdict=FOUND source=geocodio
 [PASS] address scan result has steps — keys=['parsed', 'geocodio', 'census', 'nominatim', 'verdict', 'source', 'standardized_address', 'accuracy', 'accuracy_type', 'weak', 'checked_at', 'known_scam', 'verified_scam', 'known_valid', 'verified_valid']
-[PASS] address scan geocodio status valid — status=SKIP
-[PASS] address scan census status valid — status=FOUND
+[PASS] address scan geocodio status valid — status=FOUND
+[PASS] address scan census status valid — status=SKIP
 [PASS] address scan nominatim status valid — status=SKIP
 [PASS] address scan parsed present — parseable=True
 [PASS] address scan has checked_at
-[PASS] address FOUND has standardized address — std='1600 AMPHITHEATRE PKWY, MOUNTAIN VIEW, CA, 94043'
-[PASS] address FOUND upserted into verified_valid — rows=1 std='1600 AMPHITHEATRE PKWY, MOUNTAIN VIEW, CA, 94043'
+[PASS] address scan verdict is FOUND — verdict=FOUND source=geocodio
+[PASS] address FOUND has standardized address — std='1600 Amphitheatre Pkwy, Mountain View, CA 94043'
+[PASS] address FOUND upserted into verified_valid — rows=1 std='1600 Amphitheatre Pkwy, Mountain View, CA 94043'
 [PASS] fake address scan 200 — got 200
-[PASS] fake address verdict never FOUND — verdict=NONE source=census
+[PASS] fake address verdict never FOUND — verdict=NONE source=geocodio
 [PASS] fake address not in verified_valid — known_valid=False
 [PASS] check unknown -> known_scam false — got 200 False
 [PASS] report synthetic phone 200 — got 200
@@ -129,7 +131,7 @@ NOTE: synthetic verified_scams row for +15559876543 is marked
 you want a clean table (DELETE FROM verified_scams WHERE
 target = '+15559876543').
 
-96/96 checks passed.
+98/98 checks passed.
 
 ---
-Phase 1.4 (Nov 10, 2026): Phone Number Module — verified_numbers / questionable_numbers two-table OSINT log (DDL number-log-two-tables.sql, run in the Supabase SQL editor; RLS members-read, backend service-role writes). Endpoints POST /number/log (log_sighting: upsert, bumps counters on repeat, never upgrades evidence class), POST /number/verify (promote questionable -> verified ONLY with a source document naming both the number and the person; repetition never promotes), GET /number/check (which table holds a number; standing 'observed', not 'accused'). Criteria catalog backend/criteria_catalog.json (36 criteria: PH-01..14, SCAM-01..05, SOL-01..05, ORIG-01..05, ID-01..07) — PROPRIETARY, held out of the public repo; the loader returns an empty catalog when absent and /number/log refuses criteria codes until it is installed. Scoring in number_log.py (evidence class A x1.00 / B x0.50 / C x0.25; B halved again over 12 exchanges; signed credit: confirmation +, risk -, neutral 0; B never becomes A). Unit tests test_number_log_unit.py 38/38 (Telebot's worked numbers reproduced exactly; local only, held with the catalog). Numverify GATED OFF by default (NUMVERIFY_ENABLED, Phase 1.4): flag off -> /scan/phone numverify step SKIP (never an error), no quota burned; flag on + key -> runs as before; key stays set in Render. Local runs: 96/96 (baseline 86 + 9 non-DB number checks + 1 numverify SKIP-reason check), no key -> Numverify SKIP with the gate-off reason; flag-on/no-key check -> SKIP with the no-key reason (gate passes through to the key check). The 29 DB-dependent number checks SKIP until the DDL runs (tables do not exist yet) — re-run after number-log-two-tables.sql for a full pass. Baseline was 86/86 (Phase 1.3 live). Note: the path-traversal validation case returns 403 from Cloudflare WAF on hosted deployments (rejected at the edge) vs 400 locally — both accepted as "rejected". Note: `scans` CHECK constraint does not yet list 'address' (error 23514), so address scans are stored with target_type 'other' until scans-add-address-type.sql runs in the Supabase SQL editor.
+Phase 1.4 (Nov 10, 2026): Phone Number Module — verified_numbers / questionable_numbers two-table OSINT log (DDL number-log-two-tables.sql, run in the Supabase SQL editor; RLS members-read, backend service-role writes). Endpoints POST /number/log (log_sighting: upsert, bumps counters on repeat, never upgrades evidence class), POST /number/verify (promote questionable -> verified ONLY with a source document naming both the number and the person; repetition never promotes), GET /number/check (which table holds a number; standing 'observed', not 'accused'). Criteria catalog backend/criteria_catalog.json (36 criteria: PH-01..14, SCAM-01..05, SOL-01..05, ORIG-01..05, ID-01..07) — PROPRIETARY, held out of the public repo; the loader returns an empty catalog when absent and /number/log refuses criteria codes until it is installed. Scoring in number_log.py (evidence class A x1.00 / B x0.50 / C x0.25; B halved again over 12 exchanges; signed credit: confirmation +, risk -, neutral 0; B never becomes A). Unit tests test_number_log_unit.py 38/38 (Telebot's worked numbers reproduced exactly; local only, held with the catalog). Numverify GATED OFF by default (NUMVERIFY_ENABLED, Phase 1.4): flag off -> /scan/phone numverify step SKIP (never an error), no quota burned; flag on + key -> runs as before; key stays set in Render. Test results: local 96/96 (baseline 86 + 9 non-DB number checks + 1 numverify SKIP-reason check), live Render 98/98 (96 + NUMVERIFY_EXPECTED=SKIP and ADDRESS_EXPECTED=FOUND pins; address FOUND via Geocodio rooftop accuracy 1; fake address NONE). The 29 DB-dependent number checks SKIP until the DDL runs (tables do not exist yet) — re-run after number-log-two-tables.sql for a full pass. Test fix: the missing-tables probe is now GET /number/check (catalog-independent); the earlier log-with-criteria probe 400'd on catalog-less deployments and masked the missing-tables state (first live run showed 100/127 with 27 false failures — all resolved by the probe fix). Baseline was 86/86 (Phase 1.3 live). Note: the path-traversal validation case returns 403 from Cloudflare WAF on hosted deployments (rejected at the edge) vs 400 locally — both accepted as "rejected". Note: `scans` CHECK constraint does not yet list 'address' (error 23514), so address scans are stored with target_type 'other' until scans-add-address-type.sql runs in the Supabase SQL editor.

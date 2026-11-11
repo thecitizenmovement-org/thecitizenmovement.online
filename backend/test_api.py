@@ -505,18 +505,26 @@ def main():
         "number log on verified row bumps count",
         "number verify never-logged -> 404",
     ]
-    r = client.post("/number/log",
-                    json={"target": "+15550101", "channel": "call",
-                          "evidence_class": "B", "criteria_codes": ["PH-06"],
-                          "pattern_tags": ["daily_repeat"],
-                          "content_excerpt": "[TEST] synthetic sighting"},
-                    headers=auth_headers())
+    # Probe: GET /number/check for a never-logged number. This detects
+    # whether the tables exist WITHOUT touching the catalog — a log
+    # probe with criteria would 400 on a deployment where the
+    # proprietary catalog is not installed, masking the missing-tables
+    # state. Tables exist -> 200 table "none"; missing -> 502.
+    r = client.get("/number/check", params={"target": "+15550199"},
+                   headers=auth_headers())
     if r.status_code == 502 and "number tables not created yet" in str(
             r.json().get("detail", "")):
         skip("number tables not created yet — run "
              "number-log-two-tables.sql in the Supabase SQL editor, "
              "then re-run", _number_db_checks)
     else:
+        # First log: +15550101 (PH-06, class B -> credit -2.5).
+        r = client.post("/number/log",
+                        json={"target": "+15550101", "channel": "call",
+                              "evidence_class": "B", "criteria_codes": ["PH-06"],
+                              "pattern_tags": ["daily_repeat"],
+                              "content_excerpt": "[TEST] synthetic sighting"},
+                        headers=auth_headers())
         ok = r.status_code == 200
         body = r.json() if ok else {}
         check("number log 200", ok, f"got {r.status_code}")
@@ -541,7 +549,8 @@ def main():
         body2 = r.json() if ok else {}
         check("number log repeat 200", ok, f"got {r.status_code}")
         check("number log repeat same id",
-              (body2.get("row") or {}).get("id") == first_id)
+              bool(first_id) and (body2.get("row") or {}).get("id") == first_id,
+              f"first_id={first_id!r} repeat_id={(body2.get('row') or {}).get('id')!r}")
         check("number log repeat contact_count 2",
               body2.get("contact_count") == 2,
               f"got {body2.get('contact_count')}")
