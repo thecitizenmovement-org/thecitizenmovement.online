@@ -1,4 +1,4 @@
-# Scam Intel API — Specification (v3.0 Phase 1.3)
+# Scam Intel API — Specification (v3.0 Phase 1.4)
 
 Base URL (local dev): `http://127.0.0.1:8000`
 Binds **127.0.0.1 only**. Never expose publicly. The hosted service runs on
@@ -41,7 +41,7 @@ Response `200`:
 {
   "status": "ok",
   "service": "scam-intel-api",
-  "version": "3.0.0-phase1.3",
+  "version": "3.0.0-phase1.4",
   "supabase_configured": true
 }
 ```
@@ -91,13 +91,21 @@ Notes:
   API keys are configured. Live carrier/VOIP enrichment needs API keys
   (not configured). The `phonenumbers` parse is the reliable local signal.
 - `valid: false` for 555-01xx numbers is expected — they are fictional.
-- `result.numverify`: when `NUMVERIFY_API_KEY` is set (free apilayer
-  key), the backend calls the Numverify API directly at
+- `result.numverify`: when `NUMVERIFY_ENABLED` is `true` AND
+  `NUMVERIFY_API_KEY` is set (free apilayer key), the backend calls
+  the Numverify API directly at
   https://api.apilayer.net/numverify/api/validate and returns real
   carrier and line type (mobile / landline / VoIP) plus `valid`,
   `country_code`, `country_name`, `location`, and the full API JSON
-  under `details`. PhoneInfoga's built-in numverify scanner is NOT
-  used — it calls a dead endpoint (api.apilayer.com/number_verification
+  under `details`. **Gated off by default (Phase 1.4):**
+  `NUMVERIFY_ENABLED` defaults to off, so the call is skipped
+  entirely (`{ "enabled": false, "status": "SKIP", ... }` — never an
+  error) and no quota is burned; the free plan caps at 100
+  requests/month and PhoneInfoga + the local parse already cover
+  phone checks. The key stays set in Render; set
+  `NUMVERIFY_ENABLED=true` in the Render dashboard to turn it back
+  on. PhoneInfoga's built-in numverify scanner is NOT used — it calls
+  a dead endpoint (api.apilayer.com/number_verification
   /validate, Cloudflare 504) and misreports the failure as "Invalid
   authentication credentials"; it is disabled with `-D numverify` and
   PhoneInfoga's other scanners still run. When the key is absent the
@@ -339,6 +347,168 @@ or, when not found:
 
 Errors: `401` bad/missing token. `422` missing/empty `target` query param.
 
+### POST /number/log
+
+Phone Number Module (Phase 1.4): log one sighting of an inbound
+number. Writes into `questionable_numbers` unless the number is
+already verified (then it only bumps that row's `contact_count` and
+`last_seen`). A repeat sighting never duplicates the row, never
+upgrades its evidence class, and only adds the NEW criteria's credit
+— B never becomes A by repetition.
+
+Request:
+```json
+{
+  "target": "+15550101",
+  "channel": "call",
+  "number_raw": "(555) 0101",
+  "caller_id_name": "Unknown",
+  "pattern_tags": ["daily_repeat"],
+  "content_excerpt": "Same pitch as yesterday.",
+  "evidence_class": "B",
+  "criteria_codes": ["PH-06", "PH-07"],
+  "exchange_count": 20,
+  "source_doc": "",
+  "notes": ""
+}
+```
+
+- `target` is a phone number (same validation as `/scan/phone`).
+  It is stored canonically as `number_e164` (E.164).
+- `channel` must be `call`, `sms`, or `both` (default `call`).
+- `evidence_class` must be `A`, `B`, or `C` (default `C`).
+- `criteria_codes` must be codes from `criteria_catalog.json`
+  (36 criteria: PH-01..14, SCAM-01..05, SOL-01..05, ORIG-01..05,
+  ID-01..07). Unknown codes → `400`.
+- `pattern_tags` must be from `rotating_chain`, `daily_repeat`,
+  `marketing`, `robocall`, `spoof_suspect`,
+  `institutional_impersonation`. Unknown tags → `400`.
+- `exchange_count` (optional int) feeds the class-B thin-match
+  penalty: B is halved again when the area has more than 12 exchanges.
+- `content_excerpt` max 1000 chars, `source_doc` max 1000 chars,
+  `notes` max 4000 chars.
+- PH-01..PH-05 facts come from `/scan/phone` (Numverify + phonenumbers),
+  not from this endpoint — no new lookups are made here.
+
+Response `200`:
+```json
+{
+  "target": "+15550101",
+  "number_e164": "+15550101",
+  "table": "questionable",
+  "standing": "observed",
+  "row": { "...": "the upserted row (credit, criteria_codes, ...)" },
+  "credit": -4.0,
+  "credit_breakdown": {
+    "credit": -4.0, "risk_total": 4.0, "confirmation_total": 0.0,
+    "neutral_total": 0.0,
+    "breakdown": [ { "code": "PH-06", "polarity": "risk", "weight": 5,
+                     "multiplier": 0.5, "contribution": -2.5 }, "..." ],
+    "unknown_codes": []
+  },
+  "created": true,
+  "contact_count": 1
+}
+```
+
+`credit` is the row's stored SIGNED total (confirmation +, risk −,
+neutral 0); `credit_breakdown` is this sighting's scoring. `standing`
+is `observed` for questionable rows, `verified` for verified rows —
+never `accused`.
+
+Errors: `400` invalid input. `401` bad/missing token. `502` could
+not write to Supabase, or the number tables do not exist yet (run
+`number-log-two-tables.sql` in the Supabase SQL editor).
+
+### POST /number/verify
+
+Promote questionable → verified. Refuses unless a source document
+names BOTH the number and the person: `person_name` and `source_doc`
+are both required. Repetition never promotes — the number must
+already be logged in `questionable_numbers`. Idempotent: an
+already-verified number returns its verified row.
+
+Request:
+```json
+{
+  "target": "+15550102",
+  "person_name": "Cary Heyoka",
+  "source_doc": "Filing XYZ, page 3 (names number and person)",
+  "notes": ""
+}
+```
+
+Response `200`:
+```json
+{
+  "target": "+15550102",
+  "number_e164": "+15550102",
+  "table": "verified",
+  "standing": "verified",
+  "row": { "...": "the verified row (evidence_class A, source_doc, ...)" },
+  "person_name": "Cary Heyoka",
+  "source_doc": "Filing XYZ, page 3 (names number and person)",
+  "promoted": true,
+  "already_verified": false
+}
+```
+
+The row MOVES tables (insert into `verified_numbers` with
+`evidence_class` `A`, then delete from `questionable_numbers`); the
+verified person is recorded in `notes`.
+
+Errors: `400` invalid input, or missing `person_name`/`source_doc`
+(the refusal). `401` bad/missing token. `404` number was never
+logged — log a sighting first. `502` Supabase write failed, or the
+number tables do not exist yet.
+
+### GET /number/check?target=...
+
+Which table holds a number. `table` is `verified`, `questionable`,
+or `none`; `standing` is `verified`, `observed`, or `unknown`.
+
+Request: `GET /number/check?target=%2B15550101`
+
+Response `200`:
+```json
+{
+  "target": "+15550101",
+  "number_e164": "+15550101",
+  "table": "questionable",
+  "standing": "observed",
+  "row": { "...": "the row, or null" },
+  "credit": -4.0,
+  "criteria_codes": ["PH-06", "PH-07"],
+  "pattern_tags": ["daily_repeat", "marketing"]
+}
+```
+
+Errors: `400` invalid phone number. `401` bad/missing token.
+`422` missing/empty `target` query param. `502` the number tables
+do not exist yet.
+
+### Scoring (Phone Number Module)
+
+- Criteria catalog: `backend/criteria_catalog.json` — 36 criteria
+  with code, family, polarity, weight, `requires_original`, label.
+  The catalog is DATA, not code: a new check is a data change.
+  PROPRIETARY — held out of this public repo (not committed). When
+  the file is absent, `/number/log` refuses criteria codes until it
+  is installed from the private criteria store; logging without
+  criteria codes still works.
+- Evidence class multiplies every weight: A ×1.00, B ×0.50, C ×0.25.
+  B is halved again (×0.25) when the area has more than 12 exchanges.
+  B never becomes A by repetition.
+- `credit` is the SIGNED total: confirmation +, risk −, neutral 0.
+  Above 0 leans verified, below 0 leans questionable, 0 means no
+  directional evidence.
+- `requires_original` (ORIG-01..05, ID-05, ID-06) means the criterion
+  can only be satisfied by the original item, never by a screenshot
+  or copy.
+- DDL: `number-log-two-tables.sql` (run in the Supabase SQL editor).
+  RLS matches `verified_scams` / `verified_valid`: members read all
+  rows; writes go through the backend (service role) only.
+
 ## Error reference
 
 | Status | Meaning |
@@ -346,7 +516,7 @@ Errors: `401` bad/missing token. `422` missing/empty `target` query param.
 | 400 | Invalid input (bad target, bad target_type, evidence too long). |
 | 401 | Missing or wrong bearer token. |
 | 422 | Missing/invalid query parameter or request body. |
-| 502 | Supabase write/read failed (only for `/scam/report`). |
+| 502 | Supabase write/read failed (only for `/scam/report` and the `/number/*` endpoints; for `/number/*` it also means the number tables do not exist yet — run `number-log-two-tables.sql`). |
 | 503 | A scan tool is unavailable (returned inside a scan `result`, not as HTTP 503). |
 
 ## Rate / concurrency limits

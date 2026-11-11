@@ -9,6 +9,9 @@ member-confirmed scams upsert into `verified_scams`.
 | File | What it is |
 |------|-----------|
 | `app.py` | The FastAPI service (all endpoints, validation, tools, Supabase writes). |
+| `number_log.py` | Phone Number Module scoring (Phase 1.4): criteria-catalog loading, evidence-class multiplier, signed `credit` computation, E.164 normalization. Pure — no network. |
+| `criteria_catalog.json` | Criteria catalog (Phase 1.4) — LOCAL ONLY, proprietary: 36 criteria (PH-01..14, SCAM-01..05, SOL-01..05, ORIG-01..05, ID-01..07) with family, polarity, weight, `requires_original`, label. DATA, not code — a new check is a data change. HELD OUT of this public repo (not committed); install from the private criteria store when the founder decides where it lives. |
+| `test_number_log_unit.py` | Unit tests for `number_log.py` (no network) — LOCAL ONLY: asserts against the private catalog, so it is held out of the public repo with the catalog. |
 | `requirements.txt` | Python dependencies. |
 | `run.sh` | Run script — creates the venv, installs deps, starts the service. |
 | `.env.example` | Environment template (no real values — never commit a filled-in `.env`). |
@@ -69,7 +72,8 @@ is not set (random per run, dev convenience only).
 | `SCAMINTEL_API_TOKEN` | (random per run) | Bearer token callers must send. |
 | `SUPABASE_URL` | — | `https://fcfsxgxqsownfywaokdp.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | — | service_role key. Bypasses RLS. Backend env only. |
-| `NUMVERIFY_API_KEY` | — | Free apilayer Numverify key. Unlocks the backend's direct Numverify API call (api.apilayer.net/numverify/api/validate) for carrier/line-type. Absent = SKIP. Invalid key = ERR (never a fake valid). |
+| `NUMVERIFY_API_KEY` | — | Free apilayer Numverify key. Unlocks the backend's direct Numverify API call (api.apilayer.net/numverify/api/validate) for carrier/line-type — ONLY when `NUMVERIFY_ENABLED` is true. Absent = SKIP. Invalid key = ERR (never a fake valid). The key stays set in Render; the flag gates the call. |
+| `NUMVERIFY_ENABLED` | `false` (off) | Gate for the Numverify call (Phase 1.4). Set to `true` / `1` / `yes` / `on` to run Numverify in `/scan/phone`. Off by default: the free plan caps at 100 requests/month and PhoneInfoga + the local parse already cover phone checks, so the step reports SKIP (never an error) and no quota is burned. To turn it on in production, set `NUMVERIFY_ENABLED=true` in the Render dashboard (do not remove the key). |
 | `GEOCODIO_API_KEY` | — | Free geocod.io key (2,500 lookups/day, no card). Unlocks `POST /address/verify`'s primary check (api.geocod.io/v2.1/geocode). Absent = Geocodio step SKIP; the endpoint falls back to the US Census Geocoder (free, no key). Invalid key = ERR (never a fake valid). |
 | `NOMINATIM_USER_AGENT` | `ScamIntel/3.0 (thecitizenmovement.store)` | User-Agent for Nominatim (must identify the application). |
 | `SCAMINTEL_PORT` | `8000` | Binds 127.0.0.1 only. |
@@ -116,6 +120,34 @@ deployed anywhere — it runs on localhost only. To host it:
    restart it.
 5. No hosting has been provisioned and no money spent — that is a
    separate decision for Josh.
+
+## Phone Number Module (Phase 1.4)
+
+Two-table OSINT log, seeded from live inbound traffic (Telebot's spec,
+delivered by Josh Nov 10, 2026). `verified_numbers` = confirmed to a
+person, backed by a source; `questionable_numbers` = observed,
+unconfirmed, kept deliberately. Identical shape, one row per number.
+
+- Endpoints: `POST /number/log` (upsert a sighting — repeats bump
+  `contact_count`/`last_seen`, never duplicate the row and never
+  upgrade its evidence class), `POST /number/verify` (promote
+  questionable → verified ONLY with a source document naming both the
+  number and the person — otherwise it refuses), `GET /number/check`
+  (which table holds a number).
+- Scoring (`number_log.py` + `criteria_catalog.json`): 36 criteria
+  with polarity (risk − / confirmation + / neutral 0) and weight;
+  evidence class multiplies every weight (A ×1.00, B ×0.50, C ×0.25;
+  B halved again over 12 exchanges). `credit` is the signed total.
+  B never becomes A by repetition.
+- DDL: `number-log-two-tables.sql` — run in the Supabase SQL editor
+  for project `fcfsxgxqsownfywaokdp` BEFORE the `/number/*`
+  endpoints can write (until then they return 502 "number tables not
+  created yet"). RLS matches `verified_scams` / `verified_valid`:
+  members read, backend service role writes.
+- Tests use ONLY the reserved fictional 555-0100..0199 block.
+  Standing stays `observed`, not `accused` — the tables record
+  numbers, not people. This module does not touch `verified_scams`,
+  `verified_valid`, or `scans`.
 
 ## What is NOT done (later phases)
 

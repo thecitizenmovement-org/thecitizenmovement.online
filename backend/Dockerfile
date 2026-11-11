@@ -55,8 +55,14 @@ RUN curl -sSL "https://github.com/projectdiscovery/subfinder/releases/download/v
     && rm -rf /tmp/subfinder.zip /tmp/subfinder_extract \
     && /app/tools/subfinder -version
 
-# Application code.
-COPY app.py ./
+# Application code. number_log.py is the Phone Number Module (Phase 1.4)
+# scoring module. NOTE: criteria_catalog.json is NOT copied here — the
+# criteria catalog is proprietary and is held out of this public repo
+# (see number_log.py: the loader returns an empty catalog when the file
+# is absent, and /number/log refuses criteria codes until the catalog
+# is installed). Install it from the private criteria store when the
+# founder decides where it lives; do not commit it to this repo.
+COPY app.py number_log.py ./
 COPY API_SPEC.md README.md ./
 
 # Defaults (overridden by Render environment variables).

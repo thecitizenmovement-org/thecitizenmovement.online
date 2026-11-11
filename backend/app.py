@@ -31,6 +31,11 @@ Tools (per ARCHITECTURE.md §2, plus Copilot's Nov 10, 2026 tooling report):
   - Numverify (direct HTTPS call) — carrier/line-type/validity via
     https://api.apilayer.net/numverify/api/validate (free apilayer
     key, NUMVERIFY_API_KEY). Absent key = SKIP, invalid key = ERR.
+    GATED OFF BY DEFAULT (Phase 1.4): NUMVERIFY_ENABLED must be
+    explicitly "true" for the call to run at all — the free plan caps
+    at 100 requests/month and the free tools already cover phone
+    checks. When the flag is off the step is SKIP (never an error)
+    and no quota is burned; the key stays set in Render.
   - Maigret — username checks (top-sites subset; full 509-site run is
     too slow for a synchronous API call).
   - user-scanner — email registration checks (210+ sites) and a second
@@ -69,6 +74,35 @@ Tools (per ARCHITECTURE.md §2, plus Copilot's Nov 10, 2026 tooling report):
     already provided by subfinder + crt.sh. Do not re-add without
     verifying it returns real data first.
 
+Phone Number Module (Phase 1.4) — two-table OSINT log, seeded from
+live inbound traffic (Telebot's spec, delivered by Josh Nov 10, 2026):
+  - `verified_numbers` / `questionable_numbers`, identical shape, one
+    row per number (UNIQUE number_e164). POST /number/log upserts a
+    sighting (log_sighting: bumps contact_count / last_seen on repeat
+    instead of duplicating the row); POST /number/verify promotes
+    questionable -> verified ONLY when a source document names both
+    the number and the person (verify_number refuses otherwise);
+    GET /number/check reports which table holds a number.
+  - Criteria catalog: backend/criteria_catalog.json — 36 criteria
+    (PH-01..14, SCAM-01..05, SOL-01..05, ORIG-01..05, ID-01..07).
+    The catalog is DATA, not code: a new check is a data change.
+    PROPRIETARY — held out of this public repo (not committed). The
+    loader returns an empty catalog when the file is absent, and
+    /number/log refuses criteria codes until it is installed from the
+    private criteria store.
+  - Scoring (number_log.py): evidence class multiplies every weight
+    (A x1.00, B x0.50, C x0.25; B halved again over 12 exchanges);
+    credit is the SIGNED total (confirmation +, risk -, neutral 0).
+    B never becomes A by repetition — log_sighting never changes the
+    stored evidence class; only verify_number sets class A, and only
+    with a source document.
+  - PH-01..PH-05 facts come from the existing /scan/phone path (direct
+    Numverify call + phonenumbers parse). No new lookups were added
+    for this module (FREE ONLY).
+  - Reporting discipline: standing stays 'observed', not 'accused'.
+    The tables record numbers, not people. This module does NOT touch
+    verified_scams, verified_valid, or scans.
+
 Run:
   SCAMINTEL_API_TOKEN=<token> SUPABASE_URL=<url> \\
   SUPABASE_SERVICE_KEY=<service_role_key> ./run.sh
@@ -92,6 +126,21 @@ from phonenumbers import geocoder as pn_geocoder
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+# Phone Number Module (Phase 1.4) — scoring + criteria catalog.
+# number_log.py is pure (no network): the catalog is data
+# (criteria_catalog.json), the multiplier/credit math is unit-tested
+# in test_number_log_unit.py.
+from number_log import (
+    VALID_CHANNELS,
+    VALID_EVIDENCE_CLASSES,
+    VALID_PATTERN_TAGS,
+    compute_credit,
+    evidence_multiplier,
+    get_criterion,
+    known_criteria_codes,
+    normalize_e164,
+)
 
 # ---------------------------------------------------------------------------
 # Config (environment only — no secrets in code)
@@ -164,7 +213,20 @@ SUBFINDER_EXCLUDE_SOURCES = os.environ.get(
 # https://api.apilayer.net/numverify/api/validate. Absent key = SKIP
 # (never fake clean). The key is read from the environment only and
 # is never logged or returned. Never hardcode it.
+#
+# GATE (Phase 1.4, founder's direction): Numverify's free plan caps at
+# 100 requests/month, and the free tools (PhoneInfoga + the local
+# phonenumbers parse) already cover phone checks. So the call is OFF
+# by default: NUMVERIFY_ENABLED must be explicitly set to "true" (1 /
+# yes / on) for /scan/phone to call Numverify at all. When the flag is
+# off, numverify_lookup returns SKIP (never an error) and the scan
+# relies on PhoneInfoga + local parsing for carrier/line-type/location
+# — no quota is burned. The NUMVERIFY_API_KEY stays set in Render;
+# the flag only gates the call. Set NUMVERIFY_ENABLED=true in the
+# Render dashboard to turn it back on.
 NUMVERIFY_API_KEY = os.environ.get("NUMVERIFY_API_KEY", "")
+NUMVERIFY_ENABLED = os.environ.get("NUMVERIFY_ENABLED", "").strip().lower() in (
+    "1", "true", "yes", "on")
 NUMVERIFY_URL = "https://api.apilayer.net/numverify/api/validate"
 NUMVERIFY_TIMEOUT = int(os.environ.get("NUMVERIFY_TIMEOUT", "15"))
 
@@ -249,7 +311,7 @@ def validate_target(kind, target):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="Scam Intel API",
-    version="3.0.0-phase1.3",
+    version="3.0.0-phase1.4",
     description="Phase 1 scan backend for Scam Intel v3.0. Binds localhost only.",
 )
 security = HTTPBearer(auto_error=False)
@@ -466,6 +528,227 @@ async def supabase_upsert_valid(target, target_type, verified_via, details,
 
 
 # ---------------------------------------------------------------------------
+# Phone Number Module (Phase 1.4) — verified_numbers / questionable_numbers
+# ---------------------------------------------------------------------------
+def _number_tables_error():
+    """Marker the endpoints use when the number-log tables do not exist
+    yet (DDL number-log-two-tables.sql not yet run in the Supabase SQL
+    editor). The test battery treats this as SKIP, not failure."""
+    return "number tables not created yet (run number-log-two-tables.sql)"
+
+
+async def supabase_lookup_number(number_e164):
+    """Look up a number in BOTH number-log tables. Returns
+    ("verified", row), ("questionable", row), or (None, None).
+    Returns ("error", None) when Supabase is not configured or the
+    tables do not exist yet (PGRST205)."""
+    if not _supabase_configured():
+        return "error", None
+    for table, label in (("verified_numbers", "verified"),
+                         ("questionable_numbers", "questionable")):
+        try:
+            async with _make_http_client() as client:
+                resp = await client.get(
+                    f"{SUPABASE_URL}/rest/v1/{table}",
+                    headers=_supabase_headers(),
+                    params={"number_e164": f"eq.{number_e164}"},
+                )
+                if resp.status_code == 404:
+                    return "error", None
+                resp.raise_for_status()
+                rows = resp.json()
+                if rows:
+                    return label, rows[0]
+        except Exception:
+            return "error", None
+    return None, None
+
+
+async def supabase_log_sighting_number(number_e164, number_raw, channel,
+                                       caller_id_name, pattern_tags,
+                                       content_excerpt, evidence_class,
+                                       criteria_codes, exchange_count,
+                                       source_doc, notes):
+    """log_sighting(): upsert one sighting into the number log.
+
+    - Number already in verified_numbers: bump contact_count and
+      last_seen only. A verified row's evidence, criteria and credit
+      are locked at verification; a repeat sighting never rewrites
+      them (and never demotes the number — that is a review matter,
+      not an automatic one).
+    - Number in questionable_numbers: bump the counters and MERGE the
+      new tags/criteria (union). The stored evidence_class NEVER
+      changes on a repeat — B never becomes A by repetition; it
+      upgrades only when a document appears (verify_number). Credit
+      grows only by the NEW criteria's contributions, scored with the
+      row's stored evidence class and this sighting's exchange_count.
+    - New number: insert into questionable_numbers with the sighting's
+      evidence class and the full computed credit.
+    Returns (table_label, row, created) or (None, None, False) on
+    failure. ("error", None, False) when the tables do not exist."""
+    table, existing = await supabase_lookup_number(number_e164)
+    if table == "error":
+        return "error", None, False
+    try:
+        async with _make_http_client() as client:
+            if table == "verified":
+                resp = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/verified_numbers",
+                    headers=_supabase_headers(),
+                    params={"id": f"eq.{existing['id']}"},
+                    json={
+                        "contact_count": int(existing.get("contact_count") or 1) + 1,
+                        "last_seen": "now()",
+                    },
+                )
+                resp.raise_for_status()
+                rows = resp.json()
+                return "verified", rows[0] if rows else existing, False
+            if table == "questionable":
+                merged_tags = sorted(
+                    set(existing.get("pattern_tags") or [])
+                    | set(pattern_tags or []))
+                old_codes = set(existing.get("criteria_codes") or [])
+                new_codes = [c for c in dict.fromkeys(criteria_codes or [])
+                             if c not in old_codes]
+                merged_codes = sorted(old_codes | set(criteria_codes or []))
+                # Credit grows only by the new criteria, scored with
+                # the row's STORED evidence class (never upgraded by
+                # repetition) and this sighting's exchange_count.
+                added = compute_credit(
+                    new_codes, existing.get("evidence_class") or "C",
+                    exchange_count)
+                new_credit = float(existing.get("credit") or 0) + added["credit"]
+                patch = {
+                    "contact_count": int(existing.get("contact_count") or 1) + 1,
+                    "last_seen": "now()",
+                    "pattern_tags": merged_tags,
+                    "criteria_codes": merged_codes,
+                    "credit": new_credit,
+                }
+                if caller_id_name:
+                    patch["caller_id_name"] = caller_id_name
+                if content_excerpt:
+                    patch["content_excerpt"] = content_excerpt
+                if source_doc:
+                    patch["source_doc"] = source_doc
+                if notes:
+                    patch["notes"] = notes
+                resp = await client.patch(
+                    f"{SUPABASE_URL}/rest/v1/questionable_numbers",
+                    headers=_supabase_headers(),
+                    params={"id": f"eq.{existing['id']}"},
+                    json=patch,
+                )
+                resp.raise_for_status()
+                rows = resp.json()
+                return "questionable", rows[0] if rows else existing, False
+            # New number: insert into questionable_numbers.
+            scored = compute_credit(criteria_codes, evidence_class,
+                                    exchange_count)
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/questionable_numbers",
+                headers=_supabase_headers(),
+                json={
+                    "number_e164": number_e164,
+                    "number_raw": number_raw,
+                    "channel": channel,
+                    "caller_id_name": caller_id_name,
+                    "pattern_tags": sorted(set(pattern_tags or [])),
+                    "content_excerpt": content_excerpt,
+                    "evidence_class": evidence_class,
+                    "credit": scored["credit"],
+                    "criteria_codes": sorted(set(criteria_codes or [])),
+                    "source_doc": source_doc,
+                    "notes": notes,
+                },
+            )
+            if resp.status_code == 404:
+                return "error", None, False
+            resp.raise_for_status()
+            rows = resp.json()
+            return "questionable", rows[0] if rows else None, True
+    except Exception:
+        return None, None, False
+
+
+async def supabase_verify_number(number_e164, person_name, source_doc,
+                                 notes=None):
+    """verify_number(): promote questionable -> verified.
+
+    Refuses (returns ("refused", reason, None)) unless a source
+    document names BOTH the number and the person — the caller must
+    supply both person_name and source_doc. Repetition never promotes:
+    the number must already be in questionable_numbers; a number with
+    no sightings has nothing to promote. An already-verified number
+    is returned as-is (idempotent, no duplicate row).
+    On promotion the row MOVES tables (insert into verified_numbers
+    with evidence_class 'A', then delete from questionable_numbers);
+    the verified person is recorded in notes, never as an accusation.
+    Returns ("verified", row, True) on promotion,
+    ("verified", row, False) when already verified,
+    ("not_found", None, None) when the number was never logged,
+    (None, None, None) on a write failure."""
+    table, existing = await supabase_lookup_number(number_e164)
+    if table == "error":
+        return "error", None, None
+    if not person_name or not source_doc:
+        return "refused", "a source document naming both the number and the person is required", None
+    if table == "verified":
+        return "verified", existing, False
+    if table != "questionable":
+        return "not_found", None, None
+    verified_notes = (existing.get("notes") or "").strip()
+    person_line = (
+        f"Verified person: {person_name} (source: {source_doc})")
+    if verified_notes:
+        verified_notes = verified_notes + "\n" + person_line
+    else:
+        verified_notes = person_line
+    if notes:
+        verified_notes = verified_notes + "\n" + notes.strip()
+    try:
+        async with _make_http_client() as client:
+            resp = await client.post(
+                f"{SUPABASE_URL}/rest/v1/verified_numbers",
+                headers=_supabase_headers(),
+                json={
+                    "number_e164": existing["number_e164"],
+                    "number_raw": existing.get("number_raw"),
+                    "channel": existing.get("channel"),
+                    "first_seen": existing.get("first_seen"),
+                    "last_seen": "now()",
+                    "contact_count": existing.get("contact_count"),
+                    "caller_id_name": existing.get("caller_id_name"),
+                    "pattern_tags": existing.get("pattern_tags") or [],
+                    "content_excerpt": existing.get("content_excerpt"),
+                    "evidence_class": "A",
+                    "credit": existing.get("credit"),
+                    "criteria_codes": existing.get("criteria_codes") or [],
+                    "source_doc": source_doc,
+                    "notes": verified_notes,
+                },
+            )
+            if resp.status_code == 404:
+                return "error", None, None
+            resp.raise_for_status()
+            rows = resp.json()
+            verified_row = rows[0] if rows else None
+            if verified_row is None:
+                return None, None, None
+            # Move, not copy: remove the questionable row.
+            del_resp = await client.delete(
+                f"{SUPABASE_URL}/rest/v1/questionable_numbers",
+                headers=_supabase_headers(),
+                params={"id": f"eq.{existing['id']}"},
+            )
+            del_resp.raise_for_status()
+            return "verified", verified_row, True
+    except Exception:
+        return None, None, None
+
+
+# ---------------------------------------------------------------------------
 # Tool runners (subprocess arg-lists ONLY — never shell=True)
 # ---------------------------------------------------------------------------
 def _utc_now():
@@ -653,14 +936,29 @@ async def numverify_lookup(number):
     country_code, country_name, location, carrier, line_type) and the
     full API JSON under "details" on success. Status: "ran" on a real
     API answer (even valid=false for fictional numbers — that is real
-    data), "ERR" on any failure (never a fake valid), "SKIP" when no
-    key is set. The key is never logged or returned."""
+    data), "ERR" on any failure (never a fake valid), "SKIP" when the
+    gate is off (NUMVERIFY_ENABLED not set — the default, so no quota
+    is burned) or no key is set. The key is never logged or returned."""
     checked_at = _utc_now()
     base = {
-        "enabled": bool(NUMVERIFY_API_KEY),
+        "enabled": bool(NUMVERIFY_ENABLED and NUMVERIFY_API_KEY),
         "checked_at": checked_at,
-        "note": "carrier/line-type via Numverify (free key set)",
+        "note": ("carrier/line-type via Numverify (free key set)"
+                 if NUMVERIFY_ENABLED else
+                 "Numverify gated off (NUMVERIFY_ENABLED not set) — "
+                 "carrier/line-type from PhoneInfoga + local parse"),
     }
+    if not NUMVERIFY_ENABLED:
+        return {
+            **base,
+            "enabled": False,
+            "status": "SKIP",
+            "reason": "NUMVERIFY_ENABLED is off (default) — Numverify "
+                      "call skipped to preserve the free 100/month "
+                      "quota; carrier/line-type come from PhoneInfoga "
+                      "and the local parse. Set NUMVERIFY_ENABLED=true "
+                      "to run it.",
+        }
     if not NUMVERIFY_API_KEY:
         return {
             **base,
@@ -1526,7 +1824,7 @@ async def health():
     return {
         "status": "ok",
         "service": "scam-intel-api",
-        "version": "3.0.0-phase1.3",
+        "version": "3.0.0-phase1.4",
         "supabase_configured": _supabase_configured(),
     }
 
@@ -1729,6 +2027,216 @@ async def api_scam_check(
             "verified_scam": row,
         }
     return {"target": target, "known_scam": False, "verified_scam": None}
+
+
+# ---------------------------------------------------------------------------
+# Phone Number Module (Phase 1.4) — /number/log, /number/verify, /number/check
+# ---------------------------------------------------------------------------
+def _number_tables_502():
+    """502 when the number-log tables do not exist yet (DDL
+    number-log-two-tables.sql not yet run in the Supabase SQL editor).
+    The test battery treats this as SKIP, not failure."""
+    raise HTTPException(
+        status_code=502,
+        detail=_number_tables_error(),
+    )
+
+
+@app.post("/number/log")
+async def api_number_log(request: Request, _auth: bool = Depends(require_token)):
+    """Log one sighting of an inbound number (POST /number/log).
+
+    Writes into questionable_numbers unless the number is already
+    verified (then it only bumps that row's counters). Repeats never
+    duplicate the row and never upgrade its evidence class. Body:
+      target (required, phone), channel (call|sms|both, default call),
+      number_raw, caller_id_name, pattern_tags[], content_excerpt,
+      evidence_class (A|B|C, default C), criteria_codes[] (catalog
+      codes), exchange_count (optional, for the class-B thin-match
+      penalty), source_doc, notes.
+    PH-01..PH-05 facts come from /scan/phone (Numverify + phonenumbers),
+    not from this endpoint — no new lookups are made here."""
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    target = (data.get("target") or "").strip()
+    if not target or not validate_target("phone", target):
+        return _bad_request("Invalid phone number.")
+    channel = (data.get("channel") or "call").strip().lower()
+    if channel not in VALID_CHANNELS:
+        return _bad_request("channel must be call, sms, or both.")
+    evidence_class = (data.get("evidence_class") or "C").strip().upper()
+    if evidence_class not in VALID_EVIDENCE_CLASSES:
+        return _bad_request("evidence_class must be A, B, or C.")
+    criteria_codes = data.get("criteria_codes") or []
+    if not isinstance(criteria_codes, list) or not all(
+            isinstance(c, str) for c in criteria_codes):
+        return _bad_request("criteria_codes must be a list of criterion codes.")
+    criteria_codes = [c.strip().upper() for c in criteria_codes]
+    if len(criteria_codes) > 36:
+        return _bad_request("Too many criteria_codes (max 36).")
+    known = known_criteria_codes()
+    if criteria_codes and not known:
+        # The proprietary criteria catalog is not installed on this
+        # deployment (held out of the public repo). Log without
+        # criteria_codes, or install backend/criteria_catalog.json
+        # from the private criteria store.
+        return _bad_request(
+            "Criteria catalog is not installed on this deployment "
+            "(proprietary criteria held out of the public repo); log "
+            "without criteria_codes, or install "
+            "backend/criteria_catalog.json.")
+    unknown = [c for c in criteria_codes if c not in known]
+    if unknown:
+        return _bad_request(
+            f"Unknown criteria code(s): {', '.join(unknown)}. "
+            f"See backend/criteria_catalog.json.")
+    pattern_tags = data.get("pattern_tags") or []
+    if not isinstance(pattern_tags, list) or not all(
+            isinstance(t, str) for t in pattern_tags):
+        return _bad_request("pattern_tags must be a list of tag strings.")
+    pattern_tags = [t.strip().lower() for t in pattern_tags]
+    bad_tags = [t for t in pattern_tags if t not in VALID_PATTERN_TAGS]
+    if bad_tags:
+        return _bad_request(
+            f"Unknown pattern tag(s): {', '.join(bad_tags)}. "
+            f"Allowed: {', '.join(sorted(VALID_PATTERN_TAGS))}.")
+    if len(pattern_tags) > 10:
+        return _bad_request("Too many pattern_tags (max 10).")
+    exchange_count = data.get("exchange_count")
+    if exchange_count is not None:
+        try:
+            exchange_count = int(exchange_count)
+        except (TypeError, ValueError):
+            return _bad_request("exchange_count must be an integer.")
+        if exchange_count < 0 or exchange_count > 10000:
+            return _bad_request("exchange_count must be between 0 and 10000.")
+    number_raw = (data.get("number_raw") or "").strip()[:64]
+    caller_id_name = (data.get("caller_id_name") or "").strip()[:128]
+    content_excerpt = (data.get("content_excerpt") or "").strip()
+    if len(content_excerpt) > 1000:
+        return _bad_request("content_excerpt is too long (max 1000 characters).")
+    source_doc = (data.get("source_doc") or "").strip()
+    if len(source_doc) > 1000:
+        return _bad_request("source_doc is too long (max 1000 characters).")
+    notes = (data.get("notes") or "").strip()
+    if len(notes) > 4000:
+        return _bad_request("notes is too long (max 4000 characters).")
+    number_e164 = normalize_e164(target)
+    scored = compute_credit(criteria_codes, evidence_class, exchange_count)
+    table, row, created = await supabase_log_sighting_number(
+        number_e164, number_raw or target, channel, caller_id_name or None,
+        pattern_tags, content_excerpt or None, evidence_class,
+        criteria_codes, exchange_count, source_doc or None,
+        notes or None)
+    if table == "error":
+        _number_tables_502()
+    if row is None:
+        raise HTTPException(status_code=502, detail="Could not write to Supabase.")
+    return {
+        "target": target,
+        "number_e164": number_e164,
+        "table": table,
+        "standing": "verified" if table == "verified" else "observed",
+        "row": row,
+        "credit": row.get("credit"),
+        "credit_breakdown": scored,
+        "created": created,
+        "contact_count": row.get("contact_count"),
+    }
+
+
+@app.post("/number/verify")
+async def api_number_verify(request: Request, _auth: bool = Depends(require_token)):
+    """Promote questionable -> verified (POST /number/verify).
+
+    Refuses unless a source document names BOTH the number and the
+    person: person_name and source_doc are both required. Repetition
+    never promotes — the number must already be logged in
+    questionable_numbers. Body: target (required, phone),
+    person_name (required), source_doc (required), notes (optional).
+    Idempotent: an already-verified number returns its verified row."""
+    data = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    target = (data.get("target") or "").strip()
+    if not target or not validate_target("phone", target):
+        return _bad_request("Invalid phone number.")
+    person_name = (data.get("person_name") or "").strip()
+    source_doc = (data.get("source_doc") or "").strip()
+    notes = (data.get("notes") or "").strip()
+    if len(person_name) > 128:
+        return _bad_request("person_name is too long (max 128 characters).")
+    if len(source_doc) > 1000:
+        return _bad_request("source_doc is too long (max 1000 characters).")
+    if len(notes) > 4000:
+        return _bad_request("notes is too long (max 4000 characters).")
+    if not person_name or not source_doc:
+        return _bad_request(
+            "verify_number refuses: a source document naming both the "
+            "number and the person is required (person_name and "
+            "source_doc). Repetition never promotes a number.")
+    number_e164 = normalize_e164(target)
+    status, row, promoted = await supabase_verify_number(
+        number_e164, person_name, source_doc, notes or None)
+    if status == "error":
+        _number_tables_502()
+    if status == "refused":
+        return _bad_request(row)
+    if status == "not_found":
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Number is not in questionable_numbers — "
+                     "log a sighting first (POST /number/log)."})
+    if row is None:
+        raise HTTPException(status_code=502, detail="Could not write to Supabase.")
+    return {
+        "target": target,
+        "number_e164": number_e164,
+        "table": "verified",
+        "standing": "verified",
+        "row": row,
+        "person_name": person_name,
+        "source_doc": source_doc,
+        "promoted": promoted,
+        "already_verified": not promoted,
+    }
+
+
+@app.get("/number/check")
+async def api_number_check(
+    target: str = Query(..., min_length=1, max_length=64),
+    _auth: bool = Depends(require_token),
+):
+    """Which table holds a number (GET /number/check?target=...).
+
+    Returns table "verified" | "questionable" | "none" and standing
+    "verified" | "observed" | "unknown". Standing stays 'observed',
+    not 'accused': the table records numbers, not people."""
+    target = target.strip()
+    if not validate_target("phone", target):
+        return _bad_request("Invalid phone number.")
+    number_e164 = normalize_e164(target)
+    table, row = await supabase_lookup_number(number_e164)
+    if table == "error":
+        _number_tables_502()
+    if row is None:
+        return {
+            "target": target,
+            "number_e164": number_e164,
+            "table": "none",
+            "standing": "unknown",
+            "row": None,
+            "credit": None,
+            "criteria_codes": [],
+            "pattern_tags": [],
+        }
+    return {
+        "target": target,
+        "number_e164": number_e164,
+        "table": table,
+        "standing": "verified" if table == "verified" else "observed",
+        "row": row,
+        "credit": row.get("credit"),
+        "criteria_codes": row.get("criteria_codes") or [],
+        "pattern_tags": row.get("pattern_tags") or [],
+    }
 
 
 if __name__ == "__main__":
