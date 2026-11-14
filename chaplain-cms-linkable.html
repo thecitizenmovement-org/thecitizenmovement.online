@@ -1,0 +1,3110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Chaplain CMS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=EB+Garamond:ital,wght@0,400..800;1,400..700&family=UnifrakturMaguntia&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f1e6;
+        --surface: #fdfaf1;
+        --surface-alt: #efe8d5;
+        --text: #20241f;
+        --dim: #5d6659;
+        --border: #d9d0b8;
+        --accent: #1e3a2f;
+        --accent-text: #f5f1e6;
+        --brass: #8a6a24;
+        --danger: #7a2e2e;
+        --radius: 10px;
+        --font-display: "EB Garamond", Georgia, "Times New Roman", serif;
+        --font-nameplate: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+        --font-oldenglish: "UnifrakturMaguntia", "EB Garamond", Georgia, serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131a16;
+          --surface: #1c2620;
+          --surface-alt: #243129;
+          --text: #ece7d8;
+          --dim: #a3ab9d;
+          --border: #37453b;
+          --accent: #7fb08f;
+          --accent-text: #131a16;
+          --brass: #c9a24d;
+          --danger: #d98a8a;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-display);
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      button, [role="button"], select, summary { min-height: 2rem; }
+      input:not([type="checkbox"], [type="radio"]), textarea { min-height: 2rem; }
+      a { color: var(--accent); }
+      .wrap { margin: 0 auto; max-width: 48rem; padding-left: 1rem; padding-right: 1rem; }
+      .hidden { display: none !important; }
+
+      /* ---------- shared controls ---------- */
+      .input {
+        width: 100%;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--surface);
+        padding: 0.5rem 0.75rem;
+        font: inherit;
+        font-size: 1rem;
+        color: var(--text);
+      }
+      .input::placeholder { color: var(--dim); }
+      .input:focus { outline: 2px solid var(--brass); outline-offset: 0; }
+      .btn-primary {
+        border: none;
+        border-radius: var(--radius);
+        background: var(--accent);
+        color: var(--accent-text);
+        padding: 0.5rem 1rem;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .btn-primary:disabled { opacity: 0.5; }
+      .btn-primary:active { opacity: 0.8; }
+      .btn-ghost {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text);
+        padding: 0.375rem 0.75rem;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .btn-ghost:active { background: var(--surface-alt); }
+      .btn-small {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text);
+        padding: 0.25rem 0.625rem;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        min-height: 1.75rem;
+      }
+      .btn-small:active { background: var(--surface-alt); }
+      .btn-small:disabled { opacity: 0.5; }
+      .btn-delete {
+        border: none;
+        background: none;
+        border-radius: var(--radius);
+        padding: 0.25rem 0.625rem;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--danger);
+        cursor: pointer;
+        min-height: 1.75rem;
+      }
+      .btn-delete-confirm {
+        border: none;
+        border-radius: var(--radius);
+        background: var(--danger);
+        color: #fff;
+        padding: 0.25rem 0.625rem;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        min-height: 1.75rem;
+      }
+      .field { display: block; }
+      .field > span { display: block; margin-bottom: 0.25rem; font-size: 0.875rem; font-weight: 500; color: var(--dim); }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: 1rem;
+      }
+      .card-brass {
+        border: 2px solid var(--brass);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: 1rem;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      }
+      .empty {
+        border: 1px dashed var(--border);
+        border-radius: var(--radius);
+        background: var(--surface);
+        padding: 1.5rem 1rem;
+        text-align: center;
+        font-size: 0.875rem;
+        color: var(--dim);
+      }
+      .error-note { font-size: 0.875rem; color: var(--danger); }
+      .section-title {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text);
+      }
+      .h-display {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text);
+      }
+      .blurb { margin-top: 0.25rem; max-width: 65ch; font-size: 0.875rem; color: var(--dim); }
+      .kicker {
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brass);
+        margin: 0;
+      }
+      .kicker-sm {
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--brass);
+        margin: 0;
+      }
+      .stack > * + * { margin-top: 0.75rem; }
+      .stack-lg > * + * { margin-top: 1.25rem; }
+      .form-stack > * + * { margin-top: 0.75rem; }
+      .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+      .grid-2 { display: grid; gap: 0.75rem; }
+      @media (min-width: 640px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+      .grid-3 { display: grid; gap: 0.75rem; }
+      @media (min-width: 640px) { .grid-3 { grid-template-columns: 1fr 1fr 1fr; } }
+      .pre-wrap { white-space: pre-wrap; }
+      .ext-link { font-weight: 500; color: var(--accent); text-decoration: underline; text-decoration-color: var(--brass); text-underline-offset: 2px; }
+      .chip {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface-alt);
+        color: var(--text);
+        padding: 0.125rem 0.625rem;
+        font: inherit;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+        min-height: 1.75rem;
+      }
+      .chip-static { cursor: default; }
+      .badge {
+        border-radius: 999px;
+        padding: 0.125rem 0.625rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+      }
+      .badge-ready { background: var(--accent); color: var(--accent-text); }
+      .badge-draft { background: var(--surface-alt); color: var(--dim); }
+      code.ph {
+        border-radius: 4px;
+        background: var(--surface-alt);
+        padding: 0.125rem 0.375rem;
+        font-size: 0.8125rem;
+        color: var(--brass);
+      }
+
+      /* ---------- toolbar ---------- */
+      header.topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg);
+        padding-top: env(safe-area-inset-top);
+      }
+      nav.tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+      .tab-btn {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--surface);
+        color: var(--text);
+        padding: 0.375rem 0.875rem;
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        min-height: 2.25rem;
+      }
+      .tab-btn.active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+      .tab-count {
+        margin-left: 0.375rem;
+        border-radius: 999px;
+        padding: 0.0625rem 0.375rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        background: var(--brass);
+        color: #fff;
+      }
+      .tab-btn.active .tab-count { background: var(--accent-text); color: var(--accent); }
+      .signout-btn { margin-left: auto; font-weight: 500; color: var(--dim); }
+
+      /* ---------- soundtrack ---------- */
+      .soundbar { border-bottom: 1px solid var(--border); background: var(--bg); }
+      .soundbar-inner { display: flex; flex-wrap: wrap; align-items: center; column-gap: 1rem; row-gap: 0.375rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+      .soundbar label { display: flex; cursor: pointer; align-items: center; gap: 0.5rem; font-size: 0.875rem; padding: 0.375rem 0; }
+      .soundbar input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--accent); }
+      .sound-note { font-size: 0.75rem; color: var(--dim); }
+
+      /* ---------- law divider ---------- */
+      .law-divider { border-bottom: 1px solid var(--border); background: var(--surface-alt); }
+      .law-divider .wrap { padding-top: 1rem; padding-bottom: 1rem; }
+      .selah { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+      .selah .rule { height: 1px; width: 3rem; background: var(--brass); }
+      .selah .word { font-family: var(--font-oldenglish); font-size: 1rem; line-height: 1; color: var(--brass); }
+      .law-grid { display: grid; gap: 1rem; }
+      @media (min-width: 640px) { .law-grid { grid-template-columns: 1fr 1fr; } }
+      .law-grid h2 {
+        font-family: var(--font-nameplate);
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin: 0;
+        color: var(--text);
+      }
+      .law-grid p { margin: 0.25rem 0 0; font-size: 0.875rem; line-height: 1.6; color: var(--dim); }
+      .law-second { border-top: 1px solid var(--border); padding-top: 1rem; text-align: center; }
+      @media (min-width: 640px) {
+        .law-first { text-align: left; }
+        .law-second { border-top: none; border-left: 1px solid var(--border); padding-top: 0; padding-left: 1rem; text-align: left; }
+      }
+      .law-first { text-align: center; }
+      @media (min-width: 640px) { .law-first { text-align: left; } }
+
+      /* ---------- sign-in ---------- */
+      .signin-main { margin: 0 auto; display: flex; min-height: 70vh; max-width: 28rem; flex-direction: column; justify-content: center; padding: 2.5rem 1rem; }
+      .nameplate-orn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+      .nameplate-orn .rule { height: 1px; width: 2.5rem; background: var(--brass); }
+      .nameplate-orn .letter { font-family: var(--font-nameplate); font-size: 1.5rem; line-height: 1; color: var(--brass); }
+      .nameplate-name {
+        font-family: var(--font-nameplate);
+        font-size: 2.25rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-align: center;
+        margin: 0;
+        color: var(--text);
+      }
+      .nameplate-sub { margin-top: 0.25rem; text-align: center; font-size: 0.875rem; letter-spacing: 0.02em; color: var(--dim); }
+      .boot { display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 0 1rem; }
+      .boot p { font-size: 0.875rem; color: var(--dim); }
+
+      /* ---------- roster nameplate ---------- */
+      .roster-plate { padding: 1.5rem 1rem; text-align: center; }
+      .roster-plate .letter { font-family: var(--font-oldenglish); font-size: 1.25rem; }
+      .roster-plate .big-name {
+        font-family: var(--font-nameplate);
+        font-size: 3.75rem;
+        line-height: 1;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        margin: 0;
+        color: var(--text);
+      }
+      @media (min-width: 640px) { .roster-plate .big-name { font-size: 4.5rem; } }
+      .roster-plate .plate-sub {
+        margin-top: 0.75rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--brass);
+      }
+      .hero-num { font-family: var(--font-display); font-size: 3rem; font-weight: 700; line-height: 1; color: var(--brass); }
+      .row-num { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; line-height: 1.2; color: var(--brass); }
+
+      main.page { padding-top: 1.5rem; padding-bottom: 4rem; }
+      .writing-body { font-family: var(--font-display); font-size: 1.125rem; line-height: 1.6; }
+      details summary { cursor: pointer; min-height: 2rem; padding-top: 0.25rem; }
+      .autofill-tools {
+        border: 1px dashed var(--border);
+        border-radius: var(--radius);
+        background: var(--surface-alt);
+        padding: 0.625rem 0.75rem;
+      }
+      .sources-box { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-alt); padding: 1rem; }
+      .sources-box ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+      .sources-box li { font-size: 0.875rem; margin-top: 0.25rem; }
+      .phil-grid { display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+      @media (min-width: 640px) { .phil-grid { grid-template-columns: 1fr 1fr; } }
+      .reminder-check { margin-top: 0.25rem; width: 1.25rem; height: 1.25rem; flex-shrink: 0; accent-color: var(--accent); }
+      .done-text { color: var(--dim); text-decoration: line-through; }
+      .flex-start { display: flex; align-items: flex-start; gap: 0.75rem; }
+      .grow { flex: 1 1 0%; min-width: 0; }
+      .between { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <!-- Boot: shown only while the saved session on this device is checked. -->
+    <div id="boot" class="boot"><p>Checking your sign-in…</p></div>
+
+    <!-- Sign-in gate: the ONLY thing shown until a live session exists. -->
+    <main id="signin" class="signin-main hidden">
+      <div>
+        <div class="nameplate-orn" aria-hidden="true">
+          <span class="rule"></span><span class="letter">H</span><span class="rule"></span>
+        </div>
+        <h1 class="nameplate-name">E.G. Hoff</h1>
+        <p class="nameplate-sub">Chaplain at thecitizenmovement.org</p>
+      </div>
+
+      <form id="signin-form" class="card form-stack" style="margin-top: 2rem" novalidate>
+        <p style="margin: 0; font-size: 0.875rem; line-height: 1.6; color: var(--dim)">
+          This CMS is the chaplain&rsquo;s private working space. Sign in to
+          open it — on this device you&rsquo;ll stay signed in for 30 days.
+        </p>
+        <label class="field">
+          <span>Email</span>
+          <input id="signin-email" class="input" type="email" autocomplete="username" required
+                 value="chaplain@thecitizenmovement.org" />
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="signin-password" class="input" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="signin-error" class="error-note hidden" role="alert"></p>
+        <button id="signin-submit" type="submit" class="btn-primary" style="width: 100%">Sign in</button>
+      </form>
+    </main>
+
+    <!-- The CMS itself. -->
+    <div id="app" class="hidden">
+      <header class="topbar">
+        <nav class="wrap tabs" id="tabs" aria-label="Chaplain CMS sections"></nav>
+      </header>
+
+      <div class="soundbar">
+        <div class="wrap soundbar-inner">
+          <button type="button" id="sound-toggle" class="btn-ghost" aria-pressed="false">▶ Play soundtrack</button>
+          <label>
+            <input type="checkbox" id="sound-autoplay" />
+            Play automatically when I open the CMS
+          </label>
+          <span class="sound-note" id="sound-note">Volume is capped and fades in slowly, so it never blasts ears or speakers.</span>
+        </div>
+      </div>
+
+      <section class="law-divider" aria-label="God's Law and man's law: the break between them">
+        <div class="wrap">
+          <div class="selah" aria-hidden="true">
+            <span class="rule"></span><span class="word">Selah</span><span class="rule"></span>
+          </div>
+          <div class="law-grid">
+            <div class="law-first">
+              <h2>God&rsquo;s Law — this CMS</h2>
+              <p>
+                This CMS is the chaplain&rsquo;s spiritual space: listening
+                ears and a careful heart — an Ambassador for Christ. Everything
+                in these pages serves that calling.
+              </p>
+            </div>
+            <div class="law-second">
+              <h2>Man&rsquo;s law — outside this CMS</h2>
+              <p>
+                The movement&rsquo;s legal matters are handled elsewhere, with
+                expert assistance. They do not live in this CMS.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <main class="wrap page" id="content"></main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script>
+// Built-in cross-reference topics for the static Library Assistant.
+//
+// Each topic gathers passages that speak to one theme of the chaplain's
+// work, with the key Greek and Hebrew words by their Strong's numbers —
+// every number resolves against the Strong's dictionaries wired into the
+// assistant (see the library files it loads at runtime), and every
+// checkable passage. This is the assistant's built-in study material: it
+// ships with the CMS the way the Characters profiles do, and the assistant
+// answers from it word for word rather than making anything up.
+
+
+var STUDY_TOPICS = [
+  {
+    id: "word",
+    title: "The Word of God",
+    keywords: ["word", "logos", "dabar", "scripture", "bible"],
+    summary:
+      "John opens his Gospel by naming Jesus himself as the Word — the same Word that spoke creation into being and that still lights the path. A good place to start when someone asks what the Bible is, or who Jesus is.",
+    references: [
+      { reference: "John 1:1, 14", note: "The Word was God, and the Word became flesh." },
+      { reference: "Genesis 1:3", note: "\"And God said\" — creation begins with a spoken word." },
+      { reference: "Psalm 119:105", note: "Thy word is a lamp unto my feet, and a light unto my path." },
+      { reference: "Hebrews 4:12", note: "The word of God is quick, and powerful, and sharper than any twoedged sword." },
+      { reference: "Isaiah 40:8", note: "The grass withereth, the flower fadeth: but the word of our God shall stand for ever." },
+    ],
+    strongsNumbers: ["G3056", "H1697"],
+  },
+  {
+    id: "comfort",
+    title: "Comfort",
+    keywords: ["comfort", "consolation", "sorrow", "grief", "parakletos", "nacham"],
+    summary:
+      "Comfort in Scripture is not a soft word — it is God drawing near to His people in trouble, and then sending them to do the same for others. The Spirit himself is named the Comforter.",
+    references: [
+      { reference: "Isaiah 40:1", note: "\"Comfort ye, comfort ye my people, saith your God.\"" },
+      { reference: "2 Corinthians 1:3–4", note: "The God of all comfort, who comforteth us so we can comfort others." },
+      { reference: "Psalm 23:4", note: "Thy rod and thy staff they comfort me." },
+      { reference: "John 14:16", note: "Jesus promises another Comforter who will abide forever." },
+      { reference: "Revelation 21:4", note: "God shall wipe away all tears; no more death, sorrow, or pain." },
+    ],
+    strongsNumbers: ["H5162", "G3875", "G3874"],
+  },
+  {
+    id: "shepherd",
+    title: "Shepherding the flock",
+    keywords: ["shepherd", "flock", "pastor", "sheep", "poimen"],
+    summary:
+      "The picture Scripture reaches for when it talks about caring for people: a shepherd who knows his sheep, seeks the lost one, and lays down his life. The standard set for anyone who tends God's people.",
+    references: [
+      { reference: "Psalm 23:1", note: "The LORD is my shepherd; I shall not want." },
+      { reference: "John 10:11", note: "I am the good shepherd: the good shepherd giveth his life for the sheep." },
+      { reference: "Ezekiel 34:11–12", note: "God himself will search out His sheep and seek them out." },
+      { reference: "1 Peter 5:2–4", note: "Feed the flock of God — not for gain, but willingly, as examples." },
+      { reference: "Luke 15:4–6", note: "The shepherd leaves the ninety-nine to find the one lost sheep." },
+    ],
+    strongsNumbers: ["G4166", "H7462"],
+  },
+  {
+    id: "grace",
+    title: "Grace",
+    keywords: ["grace", "charis", "favor", "favour", "gift", "unmerited"],
+    summary:
+      "Grace is God's favor given where it was not earned — the gift at the center of the gospel, and strength enough for the weakest day.",
+    references: [
+      { reference: "Ephesians 2:8", note: "By grace are ye saved through faith — the gift of God." },
+      { reference: "2 Corinthians 12:9", note: "\"My grace is sufficient for thee.\"" },
+      { reference: "Titus 2:11", note: "The grace of God that bringeth salvation hath appeared to all men." },
+      { reference: "Hebrews 4:16", note: "Come boldly to the throne of grace to find grace to help in time of need." },
+      { reference: "Genesis 6:8", note: "Noah found grace in the eyes of the LORD." },
+    ],
+    strongsNumbers: ["G5485", "H2580"],
+  },
+  {
+    id: "mercy",
+    title: "Mercy and lovingkindness",
+    keywords: ["mercy", "lovingkindness", "hesed", "chesed", "eleos", "kindness"],
+    summary:
+      "Hesed — God's covenant lovingkindness — runs through the whole Old Testament, and Psalm 136 answers every line with \"his mercy endureth for ever.\" Mercy is what the merciful receive, and what they are sent to show.",
+    references: [
+      { reference: "Psalm 136:1", note: "O give thanks unto the LORD; for he is good: for his mercy endureth for ever." },
+      { reference: "Lamentations 3:22–23", note: "His compassions fail not; great is thy faithfulness." },
+      { reference: "Micah 6:8", note: "Do justly, love mercy, and walk humbly with thy God." },
+      { reference: "Matthew 5:7", note: "Blessed are the merciful: for they shall obtain mercy." },
+      { reference: "Luke 6:36", note: "Be ye therefore merciful, as your Father also is merciful." },
+    ],
+    strongsNumbers: ["H2617", "G1656"],
+  },
+  {
+    id: "faith",
+    title: "Faith",
+    keywords: ["faith", "pistis", "emunah", "believe", "trust", "faithfulness"],
+    summary:
+      "Faith is trust that holds when it cannot see — the substance of things hoped for. Habakkuk's \"the just shall live by his faith\" carries straight through to Paul and to Hebrews 11's roll of witnesses.",
+    references: [
+      { reference: "Hebrews 11:1", note: "Faith is the substance of things hoped for, the evidence of things not seen." },
+      { reference: "Habakkuk 2:4", note: "The just shall live by his faith." },
+      { reference: "Romans 10:17", note: "Faith cometh by hearing, and hearing by the word of God." },
+      { reference: "Ephesians 2:8", note: "Saved through faith — and that not of yourselves." },
+      { reference: "James 2:17", note: "Faith, if it hath not works, is dead, being alone." },
+    ],
+    strongsNumbers: ["G4102", "H530"],
+  },
+  {
+    id: "hope",
+    title: "Hope",
+    keywords: ["hope", "elpis", "tiqvah", "expectation", "anchor"],
+    summary:
+      "Biblical hope is not wishing — it is an anchor. Tiqvah is literally a cord: something strong enough to hold on to, the same word as the scarlet cord in Rahab's window.",
+    references: [
+      { reference: "Hebrews 6:19", note: "Hope as an anchor of the soul, both sure and stedfast." },
+      { reference: "Romans 15:13", note: "The God of hope fill you with all joy and peace in believing." },
+      { reference: "Psalm 42:11", note: "Hope thou in God: for I shall yet praise him." },
+      { reference: "Lamentations 3:24", note: "The LORD is my portion, therefore will I hope in him." },
+      { reference: "1 Peter 1:3", note: "Begotten again unto a lively hope by the resurrection of Jesus Christ." },
+    ],
+    strongsNumbers: ["G1680", "H8615"],
+  },
+  {
+    id: "love",
+    title: "Love",
+    keywords: ["love", "agape", "charity", "ahav", "beloved"],
+    summary:
+      "Agape is love that gives itself away — the love God shows, the love He commands toward Himself and neighbor, and the measure Paul sets out in 1 Corinthians 13.",
+    references: [
+      { reference: "1 Corinthians 13:4–7", note: "Charity suffereth long, and is kind — the shape of love in practice." },
+      { reference: "John 3:16", note: "God so loved the world that He gave His only begotten Son." },
+      { reference: "1 John 4:8", note: "God is love." },
+      { reference: "Deuteronomy 6:5", note: "Thou shalt love the LORD thy God with all thine heart." },
+      { reference: "Matthew 22:37–39", note: "The two great commandments: love God, love thy neighbor." },
+    ],
+    strongsNumbers: ["G26", "H157"],
+  },
+  {
+    id: "peace",
+    title: "Peace",
+    keywords: ["peace", "shalom", "eirene", "wholeness", "rest"],
+    summary:
+      "Shalom is more than quiet — it is wholeness, things set right. Jesus gives a peace the world cannot give, and Paul promises a peace that guards heart and mind.",
+    references: [
+      { reference: "John 14:27", note: "Peace I leave with you, my peace I give unto you." },
+      { reference: "Philippians 4:7", note: "The peace of God, which passeth all understanding." },
+      { reference: "Numbers 6:26", note: "The LORD lift up his countenance upon thee, and give thee peace." },
+      { reference: "Isaiah 9:6", note: "His name shall be called… The Prince of Peace." },
+      { reference: "Romans 5:1", note: "Justified by faith, we have peace with God." },
+    ],
+    strongsNumbers: ["H7965", "G1515"],
+  },
+  {
+    id: "forgiveness",
+    title: "Forgiveness",
+    keywords: ["forgiveness", "forgive", "aphesis", "pardon", "remission"],
+    summary:
+      "Aphesis means a sending away — sins carried off and gone, as far as the east is from the west. And the forgiven are told to forgive the same way.",
+    references: [
+      { reference: "Psalm 103:12", note: "As far as the east is from the west, so far hath he removed our transgressions." },
+      { reference: "1 John 1:9", note: "If we confess our sins, he is faithful and just to forgive." },
+      { reference: "Ephesians 4:32", note: "Forgiving one another, even as God for Christ's sake hath forgiven you." },
+      { reference: "Colossians 3:13", note: "Even as Christ forgave you, so also do ye." },
+      { reference: "Matthew 6:14", note: "If ye forgive men their trespasses, your heavenly Father will also forgive you." },
+    ],
+    strongsNumbers: ["G859", "H5545"],
+  },
+  {
+    id: "prayer",
+    title: "Prayer",
+    keywords: ["prayer", "pray", "proseuche", "tefillah", "intercession"],
+    summary:
+      "Prayer is the chaplain's first tool — Jesus taught its pattern, Paul commands it without ceasing, and the Psalms give it words for every hour of the day.",
+    references: [
+      { reference: "Matthew 6:9–13", note: "After this manner therefore pray ye — the Lord's Prayer." },
+      { reference: "Philippians 4:6", note: "In every thing by prayer and supplication with thanksgiving let your requests be made known." },
+      { reference: "1 Thessalonians 5:17", note: "Pray without ceasing." },
+      { reference: "Psalm 55:17", note: "Evening, and morning, and at noon, will I pray." },
+      { reference: "James 5:16", note: "The effectual fervent prayer of a righteous man availeth much." },
+    ],
+    strongsNumbers: ["G4335", "H8605"],
+  },
+  {
+    id: "repentance",
+    title: "Repentance",
+    keywords: ["repentance", "repent", "metanoia", "shuv", "turn", "return"],
+    summary:
+      "Metanoia is a changed mind that changes direction; shuv is simply to turn and come back. God takes no pleasure in the death of the wicked — He waits for the turning.",
+    references: [
+      { reference: "Ezekiel 18:32", note: "I have no pleasure in the death of him that dieth… turn yourselves, and live ye." },
+      { reference: "Acts 3:19", note: "Repent ye therefore, and be converted, that your sins may be blotted out." },
+      { reference: "Psalm 51:17", note: "A broken and a contrite heart, O God, thou wilt not despise." },
+      { reference: "2 Peter 3:9", note: "Not willing that any should perish, but that all should come to repentance." },
+      { reference: "Luke 15:7", note: "Joy in heaven over one sinner that repenteth." },
+    ],
+    strongsNumbers: ["G3341", "H7725"],
+  },
+  {
+    id: "strength",
+    title: "Strength in weakness",
+    keywords: ["strength", "weakness", "dynamis", "koach", "power", "weary"],
+    summary:
+      "God's strength is made perfect in weakness — the word is dynamis, power. Those who wait upon the LORD renew their strength like the eagles.",
+    references: [
+      { reference: "2 Corinthians 12:9", note: "\"My strength is made perfect in weakness.\"" },
+      { reference: "Isaiah 40:31", note: "They that wait upon the LORD shall renew their strength." },
+      { reference: "Philippians 4:13", note: "I can do all things through Christ which strengtheneth me." },
+      { reference: "Psalm 46:1", note: "God is our refuge and strength, a very present help in trouble." },
+      { reference: "Nehemiah 8:10", note: "The joy of the LORD is your strength." },
+    ],
+    strongsNumbers: ["G1411", "H3581"],
+  },
+  {
+    id: "grief",
+    title: "Grief and mourning",
+    keywords: ["grief", "mourning", "mourn", "sorrow", "tears", "pentheo", "loss", "death"],
+    summary:
+      "Scripture does not rush past grief — Jesus wept at His friend's grave knowing resurrection stood minutes away. The promise is not no tears, but that God is near to the brokenhearted, and that sorrow has an end.",
+    references: [
+      { reference: "Psalm 34:18", note: "The LORD is nigh unto them that are of a broken heart." },
+      { reference: "John 11:35", note: "Jesus wept." },
+      { reference: "Matthew 5:4", note: "Blessed are they that mourn: for they shall be comforted." },
+      { reference: "1 Thessalonians 4:13", note: "Sorrow not as others which have no hope." },
+      { reference: "Revelation 21:4", note: "There shall be no more death, neither sorrow, nor crying." },
+    ],
+    strongsNumbers: ["G3996", "H56"],
+  },
+  {
+    id: "wisdom",
+    title: "Wisdom",
+    keywords: ["wisdom", "sophia", "chokmah", "understanding", "counsel"],
+    summary:
+      "Wisdom begins with the fear of the LORD and is given generously to anyone who asks. Chokmah is skill for living — the craftsman's word, turned to the whole of life.",
+    references: [
+      { reference: "Proverbs 9:10", note: "The fear of the LORD is the beginning of wisdom." },
+      { reference: "James 1:5", note: "If any of you lack wisdom, let him ask of God, that giveth to all men liberally." },
+      { reference: "Proverbs 2:6", note: "For the LORD giveth wisdom: out of his mouth cometh knowledge and understanding." },
+      { reference: "1 Corinthians 1:30", note: "Christ Jesus, who of God is made unto us wisdom." },
+      { reference: "Colossians 2:3", note: "In whom are hid all the treasures of wisdom and knowledge." },
+    ],
+    strongsNumbers: ["H2451", "G4678"],
+  },
+  {
+    id: "covenant",
+    title: "Covenant",
+    keywords: ["covenant", "berith", "diatheke", "testament", "promise"],
+    summary:
+      "A berith is a bond God cuts and keeps — from Noah and Abraham to the new covenant Jeremiah promised and Jesus sealed at the table: \"this is my blood of the new testament.\"",
+    references: [
+      { reference: "Genesis 15:17–18", note: "In the same day the LORD made a covenant with Abram." },
+      { reference: "Jeremiah 31:31", note: "I will make a new covenant with the house of Israel." },
+      { reference: "Luke 22:20", note: "This cup is the new testament in my blood, which is shed for you." },
+      { reference: "Hebrews 8:6", note: "A mediator of a better covenant, established upon better promises." },
+      { reference: "Exodus 19:5", note: "If ye will obey my voice indeed, and keep my covenant…" },
+    ],
+    strongsNumbers: ["H1285", "G1242"],
+  },
+];
+
+// Built-in reference content for the Characters tab: profiles of key figures
+// of Scripture, plus the bonus list of Greek philosophers. This is reference
+// material (names, key passages, and plain summaries), not the chaplain's own
+// records — it ships with the CMS the way the Resources book list does.
+
+
+var BIBLE_CHARACTERS = [
+  {
+    name: "Jesus",
+    title: "Son of God — Savior and Lord",
+    summary:
+      "Born in Bethlehem and raised in Nazareth, Jesus was baptized by John, taught the kingdom of God in parables, healed the sick, and welcomed the outcast. He was crucified under Pontius Pilate, rose on the third day, and is the center of the Christian faith — fully God and fully man, the one mediator between God and mankind.",
+    keyScriptures: [
+      { reference: "Matthew 1:21", note: "\"He shall save his people from their sins.\"" },
+      { reference: "John 1:1, 14", note: "The Word was God, and the Word became flesh." },
+      { reference: "John 3:16", note: "God so loved the world that He gave His only Son." },
+      { reference: "Philippians 2:5–11", note: "He humbled Himself to the cross; God exalted Him." },
+      { reference: "Hebrews 4:15", note: "A high priest who can sympathize with our weaknesses." },
+    ],
+    themes: ["Compassion for the broken", "Forgiveness", "Prayer", "Humble service"],
+  },
+  {
+    name: "Joshua",
+    title: "Servant of Moses — Leader of Israel",
+    summary:
+      "One of the twelve spies sent into Canaan, Joshua (with Caleb) trusted God's promise when the other ten brought a fearful report. After Moses' death he led Israel across the Jordan and into the Promised Land, and at the end of his life renewed the covenant at Shechem, calling the people to choose whom they would serve.",
+    keyScriptures: [
+      { reference: "Joshua 1:9", note: "\"Be strong and of a good courage… for the LORD thy God is with thee.\"" },
+      { reference: "Numbers 14:6–9", note: "Joshua and Caleb urge Israel to trust God and enter the land." },
+      { reference: "Joshua 24:15", note: "\"As for me and my house, we will serve the LORD.\"" },
+    ],
+    themes: ["Courage", "Obedience", "Faithful leadership through transition"],
+  },
+  {
+    name: "Esther",
+    title: "Queen of Persia — Deliverer of Her People",
+    summary:
+      "A Jewish orphan raised by her cousin Mordecai, Esther became queen to King Ahasuerus of Persia. When Haman plotted to destroy the Jews, she risked her life by approaching the king uninvited — fasting first, and asking her people to fast with her — and God used her courage to turn the plot back on Haman and save her people.",
+    keyScriptures: [
+      { reference: "Esther 4:14", note: "\"Who knoweth whether thou art come to the kingdom for such a time as this?\"" },
+      { reference: "Esther 4:16", note: "\"If I perish, I perish.\"" },
+      { reference: "Esther 7:3–6", note: "Esther pleads for her people before the king." },
+    ],
+    themes: ["Courage under pressure", "God's providence", "Standing up for your people"],
+  },
+  {
+    name: "King Solomon",
+    title: "King of Israel — The Wise King",
+    summary:
+      "Son of David and the third king of Israel. Given his choice of any gift, Solomon asked God for wisdom to govern well, and God granted it beyond measure. He built the Temple in Jerusalem and prayed its great dedication prayer. Proverbs, Ecclesiastes, and the Song of Songs are credited to him — and his later drift into compromise stands as the Bible's own warning beside his wisdom.",
+    keyScriptures: [
+      { reference: "1 Kings 3:9", note: "Solomon asks for an understanding heart to judge God's people." },
+      { reference: "1 Kings 8:22–53", note: "His prayer of dedication at the Temple." },
+      { reference: "Proverbs 1:7", note: "\"The fear of the LORD is the beginning of knowledge.\"" },
+      { reference: "Ecclesiastes 12:13", note: "\"Fear God, and keep his commandments: for this is the whole duty of man.\"" },
+    ],
+    themes: ["Wisdom", "Prayer", "The danger of a divided heart"],
+  },
+  {
+    name: "Paul",
+    title: "Apostle to the Gentiles",
+    summary:
+      "A Pharisee named Saul who persecuted the early church, Paul met the risen Christ on the road to Damascus and was turned completely around. He became the great missionary of the first-century church — planting congregations across the Roman world, writing letters that make up much of the New Testament, enduring prison and shipwreck, and at last giving his life in Rome.",
+    keyScriptures: [
+      { reference: "Acts 9:3–19", note: "His conversion on the Damascus road." },
+      { reference: "Romans 8:38–39", note: "Nothing can separate us from the love of God." },
+      { reference: "1 Corinthians 13", note: "The chapter on love." },
+      { reference: "Philippians 4:13", note: "\"I can do all things through Christ which strengtheneth me.\"" },
+      { reference: "2 Timothy 4:7", note: "\"I have fought a good fight, I have finished my course.\"" },
+    ],
+    themes: ["Grace", "Second chances", "Perseverance", "Bold witness"],
+  },
+  {
+    name: "David",
+    title: "King of Israel — Shepherd and Psalmist",
+    summary:
+      "Anointed as a shepherd boy, David defeated Goliath, served and then succeeded Saul, and united Israel as its king, bringing the ark of God to Jerusalem. He wrote many of the psalms — songs of praise, lament, and trust. He also fell grievously with Bathsheba, and his repentance in Psalm 51 is the pattern of a broken heart returning to God. Scripture calls him a man after God's own heart.",
+    keyScriptures: [
+      { reference: "1 Samuel 16:7", note: "\"Man looketh on the outward appearance, but the LORD looketh on the heart.\"" },
+      { reference: "1 Samuel 17", note: "David and Goliath." },
+      { reference: "Psalm 23", note: "\"The LORD is my shepherd; I shall not want.\"" },
+      { reference: "Psalm 51", note: "His prayer of repentance — \"Create in me a clean heart, O God.\"" },
+      { reference: "Acts 13:22", note: "God's own testimony: a man after His own heart." },
+    ],
+    themes: ["Worship", "Repentance", "Mercy", "A heart after God"],
+  },
+];
+
+
+var GREEK_PHILOSOPHERS = [
+  { name: "Thales of Miletus", dates: "c. 624–546 BC", school: "Milesian", knownFor: "The first Greek philosopher — held that water is the first principle of all things, and is said to have predicted an eclipse." },
+  { name: "Anaximander", dates: "c. 610–546 BC", school: "Milesian", knownFor: "Taught that all things arise from the apeiron, the boundless; drew one of the first maps of the world." },
+  { name: "Anaximenes", dates: "c. 585–528 BC", school: "Milesian", knownFor: "Held that air is the first principle, thickening and thinning into everything else." },
+  { name: "Pythagoras", dates: "c. 570–495 BC", school: "Pythagorean", knownFor: "Saw number as the key to reality; his school joined mathematics, music, and the life of the soul." },
+  { name: "Xenophanes", dates: "c. 570–478 BC", school: "Eleatic forerunner", knownFor: "Mocked men for making gods in their own image and pointed to one God, unlike mortals in form or thought." },
+  { name: "Heraclitus", dates: "c. 535–475 BC", school: "Ephesian", knownFor: "\"All things flow\" — the world is ordered change, governed by the Logos; you cannot step into the same river twice." },
+  { name: "Parmenides", dates: "c. 515–450 BC", school: "Eleatic", knownFor: "Argued in his poem On Nature that being is one, whole, and unchanging — and that change is an illusion of the senses." },
+  { name: "Zeno of Elea", dates: "c. 490–430 BC", school: "Eleatic", knownFor: "Defended Parmenides with his famous paradoxes of motion, including Achilles and the tortoise." },
+  { name: "Empedocles", dates: "c. 494–434 BC", school: "Pluralist", knownFor: "Taught the four roots of all things — earth, air, fire, and water — mixed and parted by Love and Strife." },
+  { name: "Anaxagoras", dates: "c. 500–428 BC", school: "Pluralist", knownFor: "Brought philosophy to Athens and taught that Mind (Nous) set the cosmos in order." },
+  { name: "Leucippus", dates: "5th century BC", school: "Atomist", knownFor: "Founder of atomism: reality is atoms moving in the void, and nothing happens without a cause." },
+  { name: "Democritus", dates: "c. 460–370 BC", school: "Atomist", knownFor: "Developed atomism with Leucippus; the \"laughing philosopher,\" who met the world's folly with cheerfulness." },
+  { name: "Protagoras", dates: "c. 490–420 BC", school: "Sophist", knownFor: "\"Man is the measure of all things\" — the leading Sophist, teacher of rhetoric for a fee." },
+  { name: "Gorgias", dates: "c. 483–375 BC", school: "Sophist", knownFor: "Master of rhetoric who dazzled Athens; his On Non-Existence argued nothing exists, or can be known, or told." },
+  { name: "Socrates", dates: "470–399 BC", school: "Athenian", knownFor: "Asked the questions Athens could not answer — virtue, justice, the examined life. Condemned to death, he drank the hemlock rather than stop philosophizing." },
+  { name: "Antisthenes", dates: "c. 445–365 BC", school: "Cynic", knownFor: "A pupil of Socrates who founded Cynicism: virtue is enough, and wealth and reputation are nothing." },
+  { name: "Aristippus", dates: "c. 435–356 BC", school: "Cyrenaic", knownFor: "Another pupil of Socrates who took the other road — pleasure rightly used is the good, and the wise man owns it rather than being owned by it." },
+  { name: "Xenophon", dates: "c. 430–354 BC", school: "Athenian", knownFor: "Soldier and historian whose Memorabilia preserves his own portrait of Socrates the teacher." },
+  { name: "Plato", dates: "c. 427–347 BC", school: "Academy", knownFor: "Founded the Academy and wrote the dialogues — the Theory of Forms, the allegory of the cave, and The Republic on the just city and the just soul." },
+  { name: "Diogenes of Sinope", dates: "c. 412–323 BC", school: "Cynic", knownFor: "Lived in a storage jar, carried a lantern in daylight looking for an honest man, and told Alexander the Great to step out of his sunlight." },
+  { name: "Aristotle", dates: "384–322 BC", school: "Lyceum", knownFor: "Plato's pupil and Alexander's tutor; founded the Lyceum and systematized logic, ethics, politics, and natural science for two thousand years." },
+  { name: "Theophrastus", dates: "c. 371–287 BC", school: "Lyceum", knownFor: "Aristotle's successor; father of botany, and author of the Characters — sharp sketches of human types." },
+  { name: "Pyrrho of Elis", dates: "c. 360–270 BC", school: "Skeptic", knownFor: "Founder of Skepticism: since certainty is out of reach, suspend judgment — and find peace in it." },
+  { name: "Hipparchia of Maroneia", dates: "c. 350–280 BC", school: "Cynic", knownFor: "One of the few women philosophers of antiquity whose life is recorded; chose the Cynic life of simplicity and free speech." },
+  { name: "Epicurus", dates: "341–270 BC", school: "The Garden", knownFor: "Taught in his Garden that true pleasure is the absence of pain and trouble — friendship, simplicity, and freedom from fear of death." },
+  { name: "Zeno of Citium", dates: "c. 334–262 BC", school: "Stoic", knownFor: "Founder of Stoicism, teaching in the Painted Porch (stoa): live according to nature and reason, and master what is yours to master." },
+  { name: "Cleanthes", dates: "c. 330–230 BC", school: "Stoic", knownFor: "Zeno's successor, a former boxer who worked nights hauling water; his Hymn to Zeus is Stoic prayer at its finest." },
+  { name: "Chrysippus", dates: "c. 279–206 BC", school: "Stoic", knownFor: "The second founder of Stoicism, who gave the school its logic and system — \"but for Chrysippus, there had been no Stoa.\"" },
+  { name: "Plotinus", dates: "AD 204/5–270", school: "Neoplatonist", knownFor: "Gathered Plato's teaching into Neoplatonism — all things flow from the One; his Enneads shaped centuries of thought after him." },
+  { name: "Hypatia of Alexandria", dates: "c. AD 360–415", school: "Neoplatonist", knownFor: "Philosopher and mathematician of Alexandria, teacher of students from across the empire; her murder marked the fading of the ancient schools." },
+];
+
+    </script>
+    <script>
+      "use strict";
+      /* ================================================================
+         The Chaplain CMS (linkable build).
+         Sign-in is Supabase Auth (email + password). Until a live
+         session exists, only the sign-in screen shows and no data call
+         is made — every data function checks for a session first, and
+         row level security on the tables refuses anonymous access too.
+         ================================================================ */
+
+      var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
+      var SUPABASE_ANON_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc";
+
+      var sb = null;
+      if (window.supabase && window.supabase.createClient) {
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true },
+        });
+      }
+
+      /* ---------------- small helpers ---------------- */
+      function $(sel, root) { return (root || document).querySelector(sel); }
+      function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function formatDate(iso) {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return String(iso || "");
+        return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      }
+      function formatDueDate(ymd) {
+        if (!ymd) return "";
+        var p = String(ymd).split("-").map(Number);
+        var d = new Date(p[0] || 1970, (p[1] || 1) - 1, p[2] || 1);
+        if (isNaN(d.getTime())) return String(ymd);
+        return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+      }
+      function formatShortDate(ymd) {
+        if (!ymd) return "";
+        var p = String(ymd).split("-").map(Number);
+        var d = new Date(p[0] || 1970, (p[1] || 1) - 1, p[2] || 1);
+        if (isNaN(d.getTime())) return String(ymd);
+        return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+      }
+      function formatLongDate(ymd) {
+        if (!ymd) return "";
+        var p = String(ymd).split("-").map(Number);
+        var d = new Date(p[0] || 1970, (p[1] || 1) - 1, p[2] || 1);
+        if (isNaN(d.getTime())) return String(ymd);
+        return d.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+      }
+      function todayYmd() {
+        var n = new Date();
+        var mm = String(n.getMonth() + 1).padStart(2, "0");
+        var dd = String(n.getDate()).padStart(2, "0");
+        return n.getFullYear() + "-" + mm + "-" + dd;
+      }
+      function emptyState(text) { return '<div class="empty">' + text + "</div>"; }
+      function errorNote() {
+        return '<p class="error-note" role="alert">Something went wrong saving that. Please try again.</p>';
+      }
+      function fieldHtml(label, inner) {
+        return '<label class="field"><span>' + esc(label) + "</span>" + inner + "</label>";
+      }
+      // Two-step delete: first tap arms it, second tap confirms.
+      function deleteBtnHtml(label) {
+        return '<span class="del-wrap"><button type="button" class="btn-delete" data-del="' +
+          esc(label) + '">Delete</button></span>';
+      }
+      function wireDelete(scope, onDelete) {
+        $$("[data-del]", scope).forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var wrap = btn.closest(".del-wrap");
+            if (!wrap || wrap.dataset.armed) return;
+            wrap.dataset.armed = "1";
+            var label = btn.getAttribute("data-del");
+            wrap.innerHTML =
+              '<button type="button" class="btn-delete-confirm">Confirm delete</button> ' +
+              '<button type="button" class="btn-small">Keep</button>';
+            wrap.children[0].setAttribute("aria-label", "Confirm " + label);
+            wrap.children[1].setAttribute("aria-label", "Cancel delete");
+            wrap.children[0].addEventListener("click", function () { onDelete(); });
+            wrap.children[1].addEventListener("click", function () {
+              delete wrap.dataset.armed;
+              wrap.innerHTML = "";
+              var b = document.createElement("button");
+              b.type = "button"; b.className = "btn-delete"; b.textContent = "Delete";
+              b.setAttribute("data-del", label);
+              wrap.appendChild(b);
+              wireDelete(wrap, onDelete);
+            });
+          });
+        });
+      }
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return fallbackCopy(text); });
+        }
+        return Promise.resolve(fallbackCopy(text));
+      }
+      function fallbackCopy(text) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text; ta.setAttribute("readonly", "");
+          ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          return ok;
+        } catch (e) { return false; }
+      }
+
+      /* ---------------- data layer (Supabase) ----------------
+         Every function refuses without a live session. */
+      function requireSession() {
+        if (!sb) return Promise.reject(new Error("no-client"));
+        return sb.auth.getSession().then(function (res) {
+          if (!res.data || !res.data.session) throw new Error("no-session");
+          return res.data.session;
+        });
+      }
+      function dbList(table, orderCol, ascending) {
+        return requireSession().then(function () {
+          var q = sb.from(table).select("*");
+          if (orderCol) q = q.order(orderCol, { ascending: ascending !== false });
+          return q;
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return res.data || [];
+        });
+      }
+      function dbInsert(table, row) {
+        return requireSession().then(function () {
+          return sb.from(table).insert(row).select().single();
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return res.data;
+        });
+      }
+      function dbUpdate(table, id, patch) {
+        return requireSession().then(function () {
+          patch.updated_at = new Date().toISOString();
+          return sb.from(table).update(patch).eq("id", id).select().single();
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return res.data;
+        });
+      }
+      function dbDelete(table, id) {
+        return requireSession().then(function () {
+          return sb.from(table).delete().eq("id", id);
+        }).then(function (res) {
+          if (res.error) throw res.error;
+          return true;
+        });
+      }
+
+      /* ---------------- autofill (My Information) ---------------- */
+      function placeholderFor(label) { return "{{" + label + "}}"; }
+      function afKey(label) { return String(label).trim().toLowerCase().replace(/\s+/g, " "); }
+      function fillPlaceholders(body, fields) {
+        if (!fields || fields.length === 0) return body;
+        var values = {};
+        fields.forEach(function (f) { values[afKey(f.label)] = f.value || ""; });
+        return String(body || "").replace(/\{\{\s*([^{}]+?)\s*\}\}/g, function (whole, raw) {
+          var v = values[afKey(raw)];
+          return v === undefined ? whole : v;
+        });
+      }
+      function unfilledPlaceholders(body, fields) {
+        var known = {};
+        (fields || []).forEach(function (f) { known[afKey(f.label)] = true; });
+        var found = {}, order = [];
+        var re = /\{\{\s*([^{}]+?)\s*\}\}/g, m;
+        var text = String(body || "");
+        while ((m = re.exec(text)) !== null) {
+          var raw = (m[1] || "").trim();
+          if (raw && !known[afKey(raw)]) { found[afKey(raw)] = raw; order.push(afKey(raw)); }
+        }
+        return order.map(function (k) { return found[k]; });
+      }
+      // The "My information" strip under an editor: insert chips + fill button.
+      function autofillToolsHtml(fields, prefix) {
+        if (!fields || fields.length === 0) return "";
+        var chips = fields.map(function (f) {
+          return '<button type="button" class="chip" data-insert="' + esc(f.label) + '" aria-label="Insert placeholder for ' +
+            esc(f.label) + '">Insert ' + esc(placeholderFor(f.label)) + "</button>";
+        }).join("");
+        return '<div class="autofill-tools" data-aftools="' + prefix + '">' +
+          '<p class="kicker-sm" style="color: var(--dim)">My information</p>' +
+          '<div class="row" style="margin-top: 0.375rem">' + chips +
+          '<button type="button" class="chip hidden" data-fill style="background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600">Fill in my information</button></div>' +
+          '<p class="hidden" data-unfilled style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--dim)"></p></div>';
+      }
+      function wireAutofillTools(scope, fields, getTextarea, getBody, setBody) {
+        var tools = $("[data-aftools]", scope);
+        if (!tools) return;
+        function refresh() {
+          var body = getBody();
+          var fillBtn = $("[data-fill]", tools);
+          var note = $("[data-unfilled]", tools);
+          if (fillBtn) fillBtn.classList.toggle("hidden", !/\{\{/.test(body));
+          var remaining = unfilledPlaceholders(body, fields);
+          if (note) {
+            if (remaining.length > 0) {
+              note.textContent = "No field yet for: " + remaining.map(placeholderFor).join(", ") +
+                " — add it under My Information on My Dashboard and it will fill too.";
+              note.classList.remove("hidden");
+            } else { note.classList.add("hidden"); }
+          }
+        }
+        $$("[data-insert]", tools).forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var token = placeholderFor(btn.getAttribute("data-insert"));
+            var ta = getTextarea();
+            var body = getBody();
+            if (!ta) { setBody(body + token); refresh(); return; }
+            var start = ta.selectionStart == null ? body.length : ta.selectionStart;
+            var end = ta.selectionEnd == null ? body.length : ta.selectionEnd;
+            setBody(body.slice(0, start) + token + body.slice(end));
+            requestAnimationFrame(function () {
+              ta.focus();
+              var pos = start + token.length;
+              try { ta.setSelectionRange(pos, pos); } catch (e) {}
+            });
+            refresh();
+          });
+        });
+        var fillBtn = $("[data-fill]", tools);
+        if (fillBtn) fillBtn.addEventListener("click", function () {
+          setBody(fillPlaceholders(getBody(), fields));
+          refresh();
+        });
+        var ta = getTextarea();
+        if (ta) ta.addEventListener("input", refresh);
+        refresh();
+      }
+
+      /* ---------------- Resources page reference data ---------------- */
+      var APOCRYPHA_BOOKS = [
+        "1 Esdras", "2 Esdras", "Tobit", "Judith", "Additions to Esther",
+        "Wisdom of Solomon", "Ecclesiasticus (Sirach)",
+        "Baruch, with the Letter of Jeremiah",
+        "Prayer of Azariah (Song of the Three Holy Children)", "Susanna",
+        "Bel and the Dragon", "Prayer of Manasseh", "1 Maccabees", "2 Maccabees",
+      ];
+      var APOCRYPHA_INDEX_URL = "https://www.kingjamesbibleonline.org/Apocrypha-Books/";
+      var APOCRYPHA_FULLTEXT_URL = "https://wordsofrefuge.org/";
+      var STRONGS_ABOUT_URL = "http://biblehub.com/q/what_is_strong's_concordance.htm";
+      function bibleHubStrongsUrl(language, num) {
+        return language === "greek"
+          ? "https://biblehub.com/strongs/greek/" + num + ".htm"
+          : "https://biblehub.com/hebrew/" + num + ".htm";
+      }
+      function blueLetterStrongsUrl(language, num) {
+        var prefix = language === "greek" ? "G" : "H";
+        return "https://www.blbclassic.org/lang/lexicon/Lexicon.cfm?Strongs=" + prefix + num + "&t=KJV";
+      }
+      var STARTER_TEMPLATES = [
+        {
+          name: "Lesson outline — one main text", kind: "lesson",
+          body: ["Opening prayer:", "", "Main text: [book chapter:verse]", "",
+            "Words to look up (Greek / Hebrew, with Strong's numbers):", "- ", "",
+            "Main points:", "1. ", "2. ", "3. ", "", "Cross-references:", "- ", "",
+            "What this asks of us (application):", "", "Closing prayer / benediction:"].join("\n"),
+        },
+        {
+          name: "Lesson outline — a topic across Scripture", kind: "lesson",
+          body: ["Topic:", "", "Opening text:", "", "What the Old Testament shows:", "- ", "",
+            "What the New Testament shows:", "- ", "",
+            "Words to look up (Greek / Hebrew, with Strong's numbers):", "- ", "",
+            "Where interpreters differ, stated fairly:", "", "Summary for the hearers:", "",
+            "Closing prayer:"].join("\n"),
+        },
+        {
+          name: "Public address outline", kind: "address",
+          body: ["Occasion / audience:", "", "Opening (greeting and the reason we are gathered):", "",
+            "Scripture reading:", "", "The word for today (main body):", "",
+            "A story or example from our community:", "", "The call (what we ask of one another):", "",
+            "Closing blessing:"].join("\n"),
+        },
+      ];
+
+      /* ================================================================
+         App state, toolbar, sign-in gate
+         ================================================================ */
+      var TABS = [
+        { id: "dashboard", label: "My Dashboard" },
+        { id: "roster", label: "Roster" },
+        { id: "contacts", label: "Contacts" },
+        { id: "reminders", label: "Reminders" },
+        { id: "notes", label: "Notes" },
+        { id: "templates", label: "Templates" },
+        { id: "addresses", label: "Addresses" },
+        { id: "lessons", label: "Lessons" },
+        { id: "resources", label: "Resources" },
+        { id: "study", label: "Study" },
+        { id: "characters", label: "Characters" },
+      ];
+      var state = {
+        tab: "dashboard",
+        signedIn: false,
+        openReminderCount: 0,
+        profileFields: null, // cached for autofill strips
+      };
+
+      function renderTabs() {
+        var nav = $("#tabs");
+        var html = TABS.map(function (t) {
+          var active = state.tab === t.id;
+          var badge = "";
+          if (t.id === "reminders" && state.openReminderCount > 0) {
+            badge = '<span class="tab-count" aria-label="' + state.openReminderCount + ' open reminders">' +
+              state.openReminderCount + "</span>";
+          }
+          return '<button type="button" class="tab-btn' + (active ? " active" : "") + '" data-tab="' + t.id + '"' +
+            (active ? ' aria-current="page"' : "") + ">" + esc(t.label) + badge + "</button>";
+        }).join("");
+        html += '<button type="button" class="tab-btn signout-btn" id="signout-btn">Sign out</button>';
+        nav.innerHTML = html;
+        $$("[data-tab]", nav).forEach(function (b) {
+          b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
+        });
+        $("#signout-btn").addEventListener("click", function () {
+          var btn = this;
+          btn.disabled = true; btn.textContent = "Signing out…";
+          sb.auth.signOut().then(function () { /* onAuthStateChange shows the gate */ });
+        });
+      }
+
+      function showTab(id) {
+        state.tab = id;
+        renderTabs();
+        var content = $("#content");
+        content.innerHTML = '<p style="font-size:0.875rem;color:var(--dim)">Loading…</p>';
+        var renderers = {
+          dashboard: renderDashboard, roster: renderRoster, contacts: renderContacts,
+          reminders: renderReminders, notes: renderNotes, templates: renderTemplates,
+          addresses: function () { renderWritings("address"); },
+          lessons: function () { renderWritings("lesson"); },
+          resources: renderResources, study: renderStudy, characters: renderCharacters,
+        };
+        Promise.resolve(renderers[id]()).catch(function () {
+          content.innerHTML = errorNote();
+        });
+        window.scrollTo(0, 0);
+      }
+
+      function refreshReminderBadge() {
+        return dbList("chaplain_reminders", "due_date", true).then(function (rows) {
+          state.openReminderCount = rows.filter(function (r) { return !r.done; }).length;
+          if (state.signedIn) renderTabs();
+        }).catch(function () {});
+      }
+
+      function getProfileFields() {
+        if (state.profileFields) return Promise.resolve(state.profileFields);
+        return dbList("chaplain_profile_fields", "position", true).then(function (rows) {
+          state.profileFields = rows;
+          return rows;
+        });
+      }
+
+      function showGate() {
+        state.signedIn = false;
+        $("#boot").classList.add("hidden");
+        $("#app").classList.add("hidden");
+        $("#content").innerHTML = "";
+        $("#signin").classList.remove("hidden");
+        stopSoundtrack();
+      }
+      function showApp() {
+        state.signedIn = true;
+        $("#boot").classList.add("hidden");
+        $("#signin").classList.add("hidden");
+        $("#app").classList.remove("hidden");
+        renderTabs();
+        showTab("dashboard");
+        refreshReminderBadge();
+        initSoundtrackAutoplay();
+      }
+
+      function initGate() {
+        var errBox = $("#signin-error");
+        if (!sb) {
+          $("#boot").classList.add("hidden");
+          $("#signin").classList.remove("hidden");
+          errBox.textContent = "The sign-in service could not be loaded. Check your connection and reload the page.";
+          errBox.classList.remove("hidden");
+          $("#signin-submit").disabled = true;
+          return;
+        }
+        // Restore the session kept on this device (Supabase Auth keeps it
+        // until sign-out). No table data is read here or anywhere before
+        // a live session exists.
+        sb.auth.getSession().then(function (res) {
+          if (res.data && res.data.session) showApp(); else showGate();
+        }).catch(function () { showGate(); });
+
+        sb.auth.onAuthStateChange(function (event, session) {
+          if (event === "SIGNED_IN" && session && !state.signedIn) showApp();
+          if (event === "SIGNED_OUT") showGate();
+        });
+
+        $("#signin-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          var email = $("#signin-email").value.trim();
+          var password = $("#signin-password").value;
+          var btn = $("#signin-submit");
+          errBox.classList.add("hidden");
+          btn.disabled = true; btn.textContent = "Signing in…";
+          sb.auth.signInWithPassword({ email: email, password: password }).then(function (res) {
+            btn.disabled = false; btn.textContent = "Sign in";
+            if (res.error || !res.data.session) {
+              errBox.textContent = "That email and password don't match our records. Check them and try again.";
+              errBox.classList.remove("hidden");
+            }
+            // On success, onAuthStateChange (SIGNED_IN) opens the CMS.
+          }).catch(function () {
+            btn.disabled = false; btn.textContent = "Sign in";
+            errBox.textContent = "That email and password don't match our records. Check them and try again.";
+            errBox.classList.remove("hidden");
+          });
+        });
+      }
+
+      /* ================================================================
+         Soundtrack — the same three StockTune tracks the movement's
+         sites play, streamed from StockTune. Volume capped at 0.6 with a
+         slow fade; a Play button for when the browser asks for a tap
+         first; an autoplay checkbox he controls.
+         ================================================================ */
+      var TRACKS = [
+        "https://tunes.stocktune.com/public/2/5/2/2525ed68-5577-4f3b-b26a-18c631e797b2/ethereal-nocturnal-pathways-stocktune.mp3",
+        "https://tunes.stocktune.com/public/2/0/b/20b055ac-94d5-4272-92d9-f1dd03bb8a61/quiet-reflections-hip-hop-stocktune.mp3",
+        "https://tunes.stocktune.com/public/b/3/d/b3d7566c-727e-4173-b905-cd0c12771d74/echoes-in-the-dark-stocktune.mp3",
+      ];
+      var VOLUME_CAP = 0.6;
+      var sound = { audio: null, fade: null, track: 0, playing: false, needsTap: false, started: false };
+      function getAudio() {
+        if (!sound.audio) {
+          sound.audio = new Audio();
+          sound.audio.preload = "none";
+          sound.audio.src = TRACKS[0];
+        }
+        return sound.audio;
+      }
+      function clearFade() {
+        if (sound.fade !== null) { clearInterval(sound.fade); sound.fade = null; }
+      }
+      function fadeTo(target, step) {
+        var audio = getAudio();
+        clearFade();
+        sound.fade = setInterval(function () {
+          var v = audio.volume + (target > audio.volume ? step : -step);
+          if (target === audio.volume || (target > audio.volume && v >= target) || (target < audio.volume && v <= target)) {
+            audio.volume = target;
+            clearFade();
+            if (target === 0) { audio.pause(); setPlaying(false); }
+          } else {
+            audio.volume = Math.max(0, Math.min(VOLUME_CAP, v));
+          }
+        }, 250);
+      }
+      function setPlaying(on) {
+        sound.playing = on;
+        var btn = $("#sound-toggle");
+        if (btn) {
+          btn.textContent = on ? "❚❚ Pause soundtrack" : "▶ Play soundtrack";
+          btn.setAttribute("aria-label", on ? "Pause soundtrack" : "Play soundtrack");
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+        }
+        updateSoundNote();
+      }
+      function updateSoundNote() {
+        var note = $("#sound-note");
+        if (!note) return;
+        note.textContent = (sound.needsTap && !sound.playing)
+          ? "Your browser asks for one tap before sound — tap Play and it will start."
+          : "Volume is capped and fades in slowly, so it never blasts ears or speakers.";
+      }
+      function playTrack(index) {
+        var audio = getAudio();
+        sound.track = ((index % TRACKS.length) + TRACKS.length) % TRACKS.length;
+        audio.src = TRACKS[sound.track];
+        audio.volume = 0;
+        audio.onended = function () { playTrack(sound.track + 1); };
+        var attempt = audio.play();
+        if (attempt && typeof attempt.then === "function") {
+          attempt.then(function () {
+            sound.needsTap = false; setPlaying(true); fadeTo(VOLUME_CAP, 0.03);
+          }).catch(function () {
+            setPlaying(false); sound.needsTap = true; updateSoundNote();
+          });
+        } else { setPlaying(true); fadeTo(VOLUME_CAP, 0.03); }
+      }
+      function toggleSound() {
+        var audio = getAudio();
+        if (sound.playing) { fadeTo(0, 0.05); return; }
+        if (audio.currentTime > 0) {
+          var attempt = audio.play();
+          if (attempt && typeof attempt.then === "function") {
+            attempt.then(function () {
+              setPlaying(true); sound.needsTap = false; fadeTo(VOLUME_CAP, 0.03);
+            }).catch(function () { sound.needsTap = true; updateSoundNote(); });
+          } else { setPlaying(true); fadeTo(VOLUME_CAP, 0.03); }
+          return;
+        }
+        playTrack(sound.track);
+      }
+      function readAutoplayPref() {
+        try { return localStorage.getItem("cms_music_autoplay") === "1"; } catch (e) { return false; }
+      }
+      function initSoundtrackAutoplay() {
+        if (sound.started) return;
+        sound.started = true;
+        var box = $("#sound-autoplay");
+        if (box) box.checked = readAutoplayPref();
+        if (readAutoplayPref()) playTrack(0);
+      }
+      function stopSoundtrack() {
+        clearFade();
+        if (sound.audio) { try { sound.audio.pause(); } catch (e) {} }
+        sound.playing = false;
+        sound.started = false;
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        var toggle = $("#sound-toggle");
+        if (toggle) toggle.addEventListener("click", toggleSound);
+        var box = $("#sound-autoplay");
+        if (box) box.addEventListener("change", function () {
+          try { localStorage.setItem("cms_music_autoplay", box.checked ? "1" : "0"); } catch (e) {}
+          if (box.checked) playTrack(sound.track);
+          else if (sound.playing) fadeTo(0, 0.05);
+        });
+      });
+
+      /* ================================================================
+         My Dashboard — My Information, Copy & Paste, My Notes
+         ================================================================ */
+      function profileSectionHtml(fields, ui) {
+        var items = fields.map(function (f) {
+          if (ui.editingId === f.id) {
+            return '<article class="card" data-pf="' + f.id + '"><form class="form-stack" data-pf-edit-form>' +
+              fieldHtml("Name for the field", '<input class="input" data-pf-elabel value="' + esc(f.label) + '" required />') +
+              fieldHtml("What it fills in", '<textarea class="input" rows="2" data-pf-evalue>' + esc(f.value || "") + "</textarea>") +
+              '<p class="error-note hidden" data-pf-edit-err></p>' +
+              '<div class="row"><button type="submit" class="btn-primary">Save</button>' +
+              '<button type="button" class="btn-ghost" data-pf-cancel>Cancel</button></div></form></article>';
+          }
+          return '<article class="card" data-pf="' + f.id + '">' +
+            '<div class="row" style="align-items: baseline; column-gap: 0.75rem">' +
+            '<h3 style="margin:0;font-size:1rem;font-weight:600">' + esc(f.label) + "</h3>" +
+            '<code class="ph">' + esc(placeholderFor(f.label)) + "</code></div>" +
+            '<p class="pre-wrap" style="margin: 0.25rem 0 0; line-height: 1.6">' +
+            (f.value ? esc(f.value) : '<span style="color: var(--dim)">Nothing filled in yet — edit to add it.</span>') + "</p>" +
+            '<div class="row" style="margin-top: 0.75rem"><button type="button" class="btn-small" data-pf-edit>Edit</button>' +
+            '<span data-pf-del></span></div></article>';
+        }).join("");
+        var addBlock = ui.showAdd
+          ? '<form class="card form-stack" data-pf-add-form style="margin-top: 1rem">' +
+            fieldHtml("Name for the field", '<input class="input" data-pf-label placeholder="e.g. My name, My title, My phone, My mailing address" required />') +
+            fieldHtml("What it fills in", '<textarea class="input" rows="2" data-pf-value placeholder="The words exactly as they should appear"></textarea>') +
+            '<p class="error-note hidden" data-pf-add-err></p>' +
+            '<div class="row"><button type="submit" class="btn-primary">Add field</button>' +
+            '<button type="button" class="btn-ghost" data-pf-add-cancel>Cancel</button></div></form>'
+          : '<div style="margin-top: 1rem"><button type="button" class="btn-ghost" data-pf-add>+ Add a field</button></div>';
+        return '<section aria-label="My information"><h2 class="h-display">My information</h2>' +
+          '<p class="blurb">Your own details, kept here and nowhere else — your name, your title, your phone, the address where your mail goes, whatever you find yourself typing again and again. Each one gets a placeholder like <code class="ph">{{My name}}</code>. Put that placeholder in a lesson, an address, or a template and it fills in with what&rsquo;s here — automatically when you start from a template, or with one tap in the editor. Add, change, or remove fields whenever you like; nothing here is shared.</p>' +
+          (fields.length === 0 && !ui.showAdd ? '<div style="margin-top: 1rem">' + emptyState("No fields yet. Add the first one below — your name is a good place to start.") + "</div>" : "") +
+          '<div class="stack" style="margin-top: 1rem">' + items + "</div>" + addBlock + "</section>";
+      }
+
+      function snippetsHtml(snippets, ui) {
+        var items = snippets.map(function (s) {
+          if (ui.editingId === s.id) {
+            return '<article class="card" data-sn="' + s.id + '"><form class="form-stack" data-sn-edit-form>' +
+              fieldHtml("Name for it (optional)", '<input class="input" data-sn-elabel value="' + esc(s.label || "") + '" />') +
+              fieldHtml("The words, exactly as you want them", '<textarea class="input" rows="4" data-sn-etext required>' + esc(s.text || "") + "</textarea>") +
+              '<p class="error-note hidden" data-sn-edit-err></p>' +
+              '<div class="row"><button type="submit" class="btn-primary">Save</button>' +
+              '<button type="button" class="btn-ghost" data-sn-cancel>Cancel</button></div></form></article>';
+          }
+          return '<article class="card" data-sn="' + s.id + '">' +
+            (s.label ? '<h3 class="kicker-sm" style="font-size:0.875rem">' + esc(s.label) + "</h3>" : "") +
+            '<p class="pre-wrap" style="margin: 0.25rem 0 0; line-height: 1.6">' + esc(s.text || "") + "</p>" +
+            '<div class="row" style="margin-top: 0.75rem">' +
+            '<button type="button" class="btn-primary" data-sn-copy>Copy</button>' +
+            '<button type="button" class="btn-small" data-sn-edit>Edit</button>' +
+            '<span data-sn-del></span></div>' +
+            '<p class="error-note hidden" data-sn-copyfail role="alert">Copying did not work on this device — press and hold the words above to copy them by hand.</p></article>';
+        }).join("");
+        var addBlock = ui.showAdd
+          ? '<form class="card form-stack" data-sn-add-form style="margin-top: 1rem">' +
+            fieldHtml("Name for it (optional — e.g. the quote's source)", '<input class="input" data-sn-label placeholder="Whose words are these?" />') +
+            fieldHtml("The words, exactly as you want them", '<textarea class="input" rows="4" data-sn-text required></textarea>') +
+            '<p class="error-note hidden" data-sn-add-err></p>' +
+            '<div class="row"><button type="submit" class="btn-primary">Save item</button>' +
+            '<button type="button" class="btn-ghost" data-sn-add-cancel>Cancel</button></div></form>'
+          : '<div style="margin-top: 1rem"><button type="button" class="btn-ghost" data-sn-add>+ Add an item</button></div>';
+        return '<section aria-label="Copy and paste items"><h2 class="h-display">Copy &amp; paste</h2>' +
+          '<p class="blurb">Quotes and other words you reach for often — save them once, then tap Copy and paste them wherever you need them.</p>' +
+          (snippets.length === 0 && !ui.showAdd ? '<div style="margin-top: 1rem">' + emptyState("Nothing saved yet. Add a favorite quote below and it will be one tap away.") + "</div>" : "") +
+          '<div class="stack" style="margin-top: 1rem">' + items + "</div>" + addBlock + "</section>";
+      }
+
+      function personalNotesHtml(notes, ui) {
+        var items = notes.map(function (n) {
+          if (ui.editingId === n.id) {
+            return '<article class="card" data-pn="' + n.id + '"><form class="form-stack" data-pn-edit-form>' +
+              fieldHtml("Heading (optional)", '<input class="input" data-pn-etitle value="' + esc(n.title || "") + '" />') +
+              fieldHtml("Note", '<textarea class="input" rows="5" data-pn-ebody required>' + esc(n.body || "") + "</textarea>") +
+              '<p class="error-note hidden" data-pn-edit-err></p>' +
+              '<div class="row"><button type="submit" class="btn-primary">Save</button>' +
+              '<button type="button" class="btn-ghost" data-pn-cancel>Cancel</button></div></form></article>';
+          }
+          return '<article class="card" data-pn="' + n.id + '">' +
+            '<div class="between">' + (n.title ? '<h3 style="margin:0;font-family:var(--font-display);font-size:1.25rem;font-weight:600">' + esc(n.title) + "</h3>" : "<span></span>") +
+            '<span style="font-size:0.75rem;color:var(--dim)">' + esc(formatDate(n.updated_at)) + "</span></div>" +
+            '<p class="pre-wrap" style="margin: 0.375rem 0 0; line-height: 1.6">' + esc(n.body || "") + "</p>" +
+            '<div class="row" style="margin-top: 0.75rem"><button type="button" class="btn-small" data-pn-edit>Edit</button>' +
+            '<span data-pn-del></span></div></article>';
+        }).join("");
+        var addBlock = ui.showAdd
+          ? '<form class="card form-stack" data-pn-add-form style="margin-top: 1rem">' +
+            fieldHtml("Heading (optional)", '<input class="input" data-pn-title placeholder="What is this note about?" />') +
+            fieldHtml("Note", '<textarea class="input" rows="5" data-pn-body required></textarea>') +
+            '<p class="error-note hidden" data-pn-add-err></p>' +
+            '<div class="row"><button type="submit" class="btn-primary">Save note</button>' +
+            '<button type="button" class="btn-ghost" data-pn-add-cancel>Cancel</button></div></form>'
+          : '<div style="margin-top: 1rem"><button type="button" class="btn-ghost" data-pn-add>+ New note</button></div>';
+        return '<section aria-label="My notes"><h2 class="h-display">My notes</h2>' +
+          '<p class="blurb">Your own notes, in your own words — thoughts, reminders to yourself, things to come back to.</p>' +
+          (notes.length === 0 && !ui.showAdd ? '<div style="margin-top: 1rem">' + emptyState("No notes yet. Jot the first one down below.") + "</div>" : "") +
+          '<div class="stack" style="margin-top: 1rem">' + items + "</div>" + addBlock + "</section>";
+      }
+
+      // Wire one CRUD section (profile fields / snippets / personal notes).
+      // cfg: { rootSel, table, rerender, addSel..., } — implemented per kind below.
+      function wireCrudSection(root, kind, rerender) {
+        if (!root) return;
+        var table = { pf: "chaplain_profile_fields", sn: "chaplain_snippets", pn: "chaplain_notes" }[kind];
+        // add toggle
+        var addBtn = $("[data-" + kind + "-add]", root);
+        if (addBtn) addBtn.addEventListener("click", function () { rerender({ showAdd: true }); });
+        var addCancel = $("[data-" + kind + "-add-cancel]", root);
+        if (addCancel) addCancel.addEventListener("click", function () { rerender({}); });
+        var addForm = $("[data-" + kind + "-add-form]", root);
+        if (addForm) addForm.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var row = {};
+          if (kind === "pf") {
+            row.label = $("[data-pf-label]", addForm).value.trim();
+            row.value = $("[data-pf-value]", addForm).value.trim();
+            if (!row.label) return;
+            row.position = 1000 + Date.now() % 100000;
+          } else if (kind === "sn") {
+            row.label = $("[data-sn-label]", addForm).value.trim() || null;
+            row.text = $("[data-sn-text]", addForm).value.trim();
+            if (!row.text) return;
+          } else {
+            row.title = $("[data-pn-title]", addForm).value.trim() || null;
+            row.body = $("[data-pn-body]", addForm).value.trim();
+            if (!row.body) return;
+          }
+          dbInsert(table, row).then(function () {
+            if (kind === "pf") state.profileFields = null;
+            rerender({});
+          }).catch(function () {
+            var err = $("[data-" + kind + "-add-err]", addForm);
+            if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+          });
+        });
+        // per-item controls
+        $$("[data-" + kind + "]", root).forEach(function (card) {
+          var id = card.getAttribute("data-" + kind);
+          var editBtn = $("[data-" + kind + "-edit]", card);
+          if (editBtn) editBtn.addEventListener("click", function () { rerender({ editingId: id }); });
+          var cancelBtn = $("[data-" + kind + "-cancel]", card);
+          if (cancelBtn) cancelBtn.addEventListener("click", function () { rerender({}); });
+          var editForm = $("[data-" + kind + "-edit-form]", card);
+          if (editForm) editForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var patch = {};
+            if (kind === "pf") {
+              patch.label = $("[data-pf-elabel]", editForm).value.trim();
+              patch.value = $("[data-pf-evalue]", editForm).value;
+              if (!patch.label) return;
+            } else if (kind === "sn") {
+              patch.label = $("[data-sn-elabel]", editForm).value.trim() || null;
+              patch.text = $("[data-sn-etext]", editForm).value;
+            } else {
+              patch.title = $("[data-pn-etitle]", editForm).value.trim() || null;
+              patch.body = $("[data-pn-ebody]", editForm).value;
+            }
+            dbUpdate(table, id, patch).then(function () {
+              if (kind === "pf") state.profileFields = null;
+              rerender({});
+            }).catch(function () {
+              var err = $("[data-" + kind + "-edit-err]", editForm);
+              if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+            });
+          });
+          var delSlot = $("[data-" + kind + "-del]", card);
+          if (delSlot) {
+            delSlot.innerHTML = deleteBtnHtml("Delete this item");
+            wireDelete(delSlot, function () {
+              dbDelete(table, id).then(function () {
+                if (kind === "pf") state.profileFields = null;
+                rerender({});
+              });
+            });
+          }
+          if (kind === "sn") {
+            var copyBtn = $("[data-sn-copy]", card);
+            if (copyBtn) copyBtn.addEventListener("click", function () {
+              var textEl = card.querySelector("p.pre-wrap");
+              copyText(textEl ? textEl.textContent : "").then(function (ok) {
+                if (ok) {
+                  copyBtn.textContent = "Copied ✓";
+                  setTimeout(function () { copyBtn.textContent = "Copy"; }, 2000);
+                } else {
+                  var fail = $("[data-sn-copyfail]", card);
+                  if (fail) fail.classList.remove("hidden");
+                }
+              });
+            });
+          }
+        });
+      }
+
+      function renderDashboard() {
+        var content = $("#content");
+        var ui = renderDashboard._ui || {};
+        return Promise.all([
+          dbList("chaplain_profile_fields", "position", true),
+          dbList("chaplain_snippets", "created_at", true),
+          dbList("chaplain_notes", "created_at", false),
+        ]).then(function (res) {
+          var fields = res[0], snippets = res[1], notes = res[2];
+          state.profileFields = fields;
+          content.innerHTML =
+            '<div class="stack-lg">' +
+            '<div><p class="kicker">E.G. Hoff — your own corner of the CMS</p>' +
+            '<h2 class="section-title" style="margin-top: 0.25rem; font-size: 1.875rem">My Dashboard</h2>' +
+            '<p class="blurb">Your personal things, kept together: your own information — the details that fill themselves into your lessons and templates — the words you copy and paste, and your own notes.</p></div>' +
+            '<div id="dash-pf">' + profileSectionHtml(fields, ui.pf || {}) + "</div>" +
+            '<div id="dash-sn">' + snippetsHtml(snippets, ui.sn || {}) + "</div>" +
+            '<div id="dash-pn">' + personalNotesHtml(notes, ui.pn || {}) + "</div>" +
+            "</div>";
+          function rerenderAll(next) {
+            renderDashboard._ui = next;
+            renderDashboard();
+          }
+          wireCrudSection($("#dash-pf"), "pf", function (u) { rerenderAll({ pf: u, sn: ui.sn, pn: ui.pn }); });
+          wireCrudSection($("#dash-sn"), "sn", function (u) { rerenderAll({ pf: ui.pf, sn: u, pn: ui.pn }); });
+          wireCrudSection($("#dash-pn"), "pn", function (u) { rerenderAll({ pf: ui.pf, sn: ui.sn, pn: u }); });
+        });
+      }
+      renderDashboard._ui = {};
+
+      /* ================================================================
+         Roster
+         ================================================================ */
+      function rosterFormHtml(prefix, values, submitLabel) {
+        return '<form class="form-stack" data-ro-form="' + prefix + '">' +
+          fieldHtml("Name", '<input class="input" data-ro-name value="' + esc(values.name || "") + '" placeholder="Full name" required />') +
+          fieldHtml("Role", '<input class="input" data-ro-role value="' + esc(values.role || "") + '" placeholder="Chaplain — …" required />') +
+          fieldHtml("Public line (shown on the list)", '<input class="input" data-ro-line value="' + esc(values.public_line || "") + '" />') +
+          fieldHtml("Confirmed date (optional)", '<input class="input" type="date" data-ro-confirmed value="' + esc(values.confirmed_date || "") + '" />') +
+          fieldHtml("Notes", '<textarea class="input" rows="3" data-ro-notes>' + esc(values.notes || "") + "</textarea>") +
+          '<p class="error-note hidden" data-ro-err></p>' +
+          '<div class="row"><button type="submit" class="btn-primary">' + esc(submitLabel) + '</button>' +
+          '<button type="button" class="btn-ghost" data-ro-cancel>Cancel</button></div></form>';
+      }
+      function readRosterForm(form) {
+        return {
+          name: $("[data-ro-name]", form).value.trim(),
+          role: $("[data-ro-role]", form).value.trim(),
+          public_line: $("[data-ro-line]", form).value.trim() || null,
+          confirmed_date: $("[data-ro-confirmed]", form).value || null,
+          notes: $("[data-ro-notes]", form).value.trim() || null,
+        };
+      }
+      function renderRoster() {
+        var content = $("#content");
+        var ui = renderRoster._ui || {};
+        return Promise.all([
+          dbList("chaplain_roster", "position", true),
+          dbList("chaplain_reminders", "due_date", true),
+        ]).then(function (res) {
+          var entries = res[0];
+          var upcoming = res[1].filter(function (r) { return !r.done; }).slice(0, 3);
+          var contactsById = {};
+          var hero = entries[0], rest = entries.slice(1);
+          function entryCard(e, isHero) {
+            var inner = "";
+            if (ui.editingId === e.id) {
+              inner = rosterFormHtml("edit", e, "Save");
+            } else {
+              inner =
+                (e.public_line ? '<p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--dim)">' + esc(e.public_line) + "</p>" : "") +
+                (e.confirmed_date ? '<p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--dim)">Confirmed ' + esc(formatLongDate(e.confirmed_date)) + "</p>" : "") +
+                (e.notes ? '<p class="pre-wrap" style="margin: 0.75rem 0 0; font-size: 0.875rem; line-height: 1.6">' + esc(e.notes) + "</p>" : "") +
+                '<div class="row" style="margin-top: 1rem"><button type="button" class="btn-small" data-ro-edit="' + e.id + '">' + (isHero ? "Edit entry" : "Edit") + "</button>" +
+                (isHero ? "" : '<span data-ro-del="' + e.id + '"></span>') + "</div>";
+            }
+            var head =
+              '<span class="' + (isHero ? "hero-num" : "row-num") + '" aria-hidden="true">' + esc(e.position) + "</span>" +
+              '<div class="grow"><h' + (isHero ? "2" : "3") + ' style="margin:0;font-family:var(--font-display);font-size:' + (isHero ? "1.875rem" : "1.25rem") + ';font-weight:600">' + esc(e.name) + "</h" + (isHero ? "2" : "3") + ">" +
+              '<p style="margin: 0.125rem 0 0; font-weight: 500; color: var(--accent)">' + esc(e.role) + "</p>" + inner + "</div>";
+            return '<article class="' + (isHero ? "card-brass" : "card") + '" style="padding: 1.25rem"><div class="flex-start">' + head + "</div></article>";
+          }
+          var html =
+            '<div class="stack-lg">' +
+            '<section class="card-brass roster-plate" aria-label="Chaplain Hoff nameplate">' +
+            '<div class="nameplate-orn" aria-hidden="true" style="margin-bottom: 0.75rem"><span class="rule"></span><span class="letter" style="font-family: var(--font-oldenglish); font-size: 1.25rem">H</span><span class="rule"></span></div>' +
+            '<p class="big-name" aria-label="E.G. Hoff"><span aria-hidden="true">E.G. Hoff</span></p>' +
+            '<p class="plate-sub">Chaplain at thecitizenmovement.org</p></section>' +
+            '<section aria-label="Families and communities chaplain list">' +
+            '<p class="kicker">Families &amp; Communities</p>' +
+            '<h1 style="margin: 0.25rem 0 0; font-family: var(--font-display); font-size: 2.25rem; font-weight: 600">Our Chaplains</h1>' +
+            '<p style="margin: 0.5rem 0 0; max-width: 65ch; color: var(--dim)">The movement&rsquo;s chaplains, in order of appointment. This list carries names and roles only — personal phone numbers and private email addresses stay off it.</p>';
+          if (entries.length === 0 && !ui.showAdd) {
+            html += '<div style="margin-top: 1.5rem">' + emptyState("No chaplains on the list yet. Add the first one below.") + "</div>";
+          }
+          html += '<div class="stack" style="margin-top: 1.5rem">';
+          if (hero) html += entryCard(hero, true);
+          rest.forEach(function (e) { html += entryCard(e, false); });
+          html += "</div>";
+          if (ui.showAdd) {
+            html += '<div class="card" style="margin-top: 1.25rem">' + rosterFormHtml("add", {}, "Add to the list") + "</div>";
+          } else {
+            html += '<div style="margin-top: 1.25rem"><button type="button" class="btn-ghost" data-ro-add>+ Add a chaplain</button></div>';
+          }
+          html += "</section>";
+          if (upcoming.length > 0) {
+            html += '<section aria-label="Upcoming reminders"><h2 class="h-display">Coming up</h2><ul class="stack" style="margin: 0.75rem 0 0; padding: 0; list-style: none">' +
+              upcoming.map(function (r) {
+                return '<li class="card" style="padding: 0.625rem 1rem"><div class="between"><span style="font-size:0.875rem;font-weight:500">' + esc(r.title) +
+                  '</span><span style="font-size:0.875rem;color:var(--brass)">' + esc(formatShortDate(r.due_date)) + "</span></div></li>";
+              }).join("") + "</ul></section>";
+          }
+          html += "</div>";
+          content.innerHTML = html;
+
+          function rerender(next) { renderRoster._ui = next; renderRoster(); }
+          var addBtn = $("[data-ro-add]", content);
+          if (addBtn) addBtn.addEventListener("click", function () { rerender({ showAdd: true }); });
+          $$("[data-ro-edit]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ editingId: b.getAttribute("data-ro-edit") }); });
+          });
+          $$("[data-ro-del]", content).forEach(function (slot) {
+            slot.innerHTML = deleteBtnHtml("Delete this roster entry");
+            wireDelete(slot, function () {
+              dbDelete("chaplain_roster", slot.getAttribute("data-ro-del")).then(function () { rerender({}); });
+            });
+          });
+          $$("[data-ro-cancel]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({}); });
+          });
+          $$("[data-ro-form]", content).forEach(function (form) {
+            form.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var values = readRosterForm(form);
+              if (!values.name || !values.role) return;
+              var mode = form.getAttribute("data-ro-form");
+              var done = function () { rerender({}); };
+              var fail = function () {
+                var err = $("[data-ro-err]", form);
+                if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+              };
+              if (mode === "add") {
+                var maxPos = entries.reduce(function (m, x) { return Math.max(m, x.position || 0); }, 0);
+                values.position = maxPos + 1;
+                dbInsert("chaplain_roster", values).then(done).catch(fail);
+              } else {
+                dbUpdate("chaplain_roster", ui.editingId, values).then(done).catch(fail);
+              }
+            });
+          });
+        });
+      }
+      renderRoster._ui = {};
+
+      /* ================================================================
+         Contacts — with the fixed founder card and the Mailing
+         Addresses section gathered on this page.
+         ================================================================ */
+      var FOUNDER_CARD =
+        '<article class="card-brass" aria-label="Founder contact, always here" style="padding: 1rem">' +
+        '<p class="kicker-sm" style="font-size: 0.75rem">Founder — always here</p>' +
+        '<h3 style="margin: 0.25rem 0 0; font-family: var(--font-display); font-size: 1.5rem; font-weight: 600">Joshua Caleb Scott</h3>' +
+        '<p style="margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--accent)">Founder of The United Citizens Movement</p>' +
+        '<ul style="margin: 0.75rem 0 0; padding: 0; list-style: none; font-size: 1rem">' +
+        '<li style="margin-top: 0.375rem"><a class="ext-link" href="mailto:founder@thecitizenmovement.com">founder@thecitizenmovement.com</a></li>' +
+        '<li style="margin-top: 0.375rem"><a class="ext-link" href="tel:+15305159507">(530) 515-9507</a></li>' +
+        '<li style="margin-top: 0.375rem"><a class="ext-link" href="https://thecitizenmovement.org" target="_blank" rel="noreferrer">thecitizenmovement.org</a></li>' +
+        "</ul></article>";
+
+      function contactFormHtml(prefix, c) {
+        c = c || {};
+        return '<form class="card form-stack" data-ct-form="' + prefix + '">' +
+          fieldHtml("Name", '<input class="input" data-ct-name value="' + esc(c.name || "") + '" placeholder="Full name" required />') +
+          '<div class="grid-2">' +
+          fieldHtml("Phone", '<input class="input" type="tel" data-ct-phone value="' + esc(c.phone || "") + '" placeholder="(555) 555-5555" />') +
+          fieldHtml("Email", '<input class="input" type="email" data-ct-email value="' + esc(c.email || "") + '" placeholder="name@example.com" />') +
+          "</div>" +
+          fieldHtml("Mailing address (optional)", '<textarea class="input" rows="2" data-ct-address placeholder="Street, city, state, ZIP">' + esc(c.address || "") + "</textarea>") +
+          fieldHtml("Notes (prayer requests, family details, what to follow up on)", '<textarea class="input" rows="4" data-ct-notes>' + esc(c.notes || "") + "</textarea>") +
+          '<p class="error-note hidden" data-ct-err></p>' +
+          '<div class="row"><button type="submit" class="btn-primary">' + (prefix === "add" ? "Save contact" : "Save changes") + '</button>' +
+          '<button type="button" class="btn-ghost" data-ct-cancel>Cancel</button></div></form>';
+      }
+      function readContactForm(form) {
+        return {
+          name: $("[data-ct-name]", form).value.trim(),
+          phone: $("[data-ct-phone]", form).value.trim() || null,
+          email: $("[data-ct-email]", form).value.trim() || null,
+          address: $("[data-ct-address]", form).value.trim() || null,
+          notes: $("[data-ct-notes]", form).value.trim() || null,
+        };
+      }
+      function renderContacts() {
+        var content = $("#content");
+        var ui = renderContacts._ui || {};
+        return dbList("chaplain_contacts", "name", true).then(function (all) {
+          var q = (ui.search || "").trim().toLowerCase();
+          var shown = q ? all.filter(function (c) {
+            return [c.name, c.phone || "", c.email || "", c.address || ""].join(" ").toLowerCase().indexOf(q) >= 0;
+          }) : all;
+          var withAddress = all.filter(function (c) { return c.address; });
+          var html = '<div class="stack" style="gap: 1.25rem">' +
+            '<div><h2 class="section-title">Contacts</h2>' +
+            '<p class="blurb">Your own contact book — the people you meet and minister to through the movement. Only what you type here is stored.</p></div>' +
+            FOUNDER_CARD +
+            '<div class="row"><input class="input" style="max-width: 20rem" data-ct-search placeholder="Search by name, phone, or email" aria-label="Search contacts" value="' + esc(ui.search || "") + '" />' +
+            (ui.showAdd ? "" : '<button type="button" class="btn-primary" data-ct-add>+ Add a contact</button>') + "</div>";
+          if (ui.showAdd) html += contactFormHtml("add", {});
+          if (all.length === 0 && !ui.showAdd) html += emptyState("No contacts yet. When you meet someone through the movement, add them here so their name, number, and story are never lost.");
+          if (all.length > 0 && shown.length === 0) html += emptyState("No contacts match that search.");
+          html += '<ul class="stack" style="margin: 0; padding: 0; list-style: none">';
+          shown.forEach(function (c) {
+            if (ui.editingId === c.id) {
+              html += '<li>' + contactFormHtml("edit", c) + "</li>";
+              return;
+            }
+            html += '<li class="card">' +
+              '<h3 style="margin:0;font-family:var(--font-display);font-size:1.25rem;font-weight:600">' + esc(c.name) + "</h3>" +
+              '<div class="row" style="margin-top: 0.375rem; column-gap: 1rem; font-size: 0.875rem">' +
+              (c.phone ? '<a class="ext-link" href="tel:' + esc(c.phone.replace(/[^+\d]/g, "")) + '">' + esc(c.phone) + "</a>" : "") +
+              (c.email ? '<a class="ext-link" href="mailto:' + esc(c.email) + '">' + esc(c.email) + "</a>" : "") + "</div>" +
+              (c.address ? '<p class="pre-wrap" style="margin: 0.5rem 0 0; font-size: 0.875rem"><span style="font-weight:600;color:var(--dim)">Mailing address: </span>' + esc(c.address) + "</p>" : "") +
+              (c.notes ? '<p class="pre-wrap" style="margin: 0.5rem 0 0; font-size: 0.875rem; line-height: 1.6">' + esc(c.notes) + "</p>" : "") +
+              '<div class="row" style="margin-top: 0.75rem"><button type="button" class="btn-small" data-ct-edit="' + c.id + '">Edit</button>' +
+              '<span data-ct-del="' + c.id + '"></span></div></li>';
+          });
+          html += "</ul>";
+          html += '<section aria-label="Mailing addresses" style="padding-top: 0.5rem"><h2 class="h-display">Mailing Addresses</h2>' +
+            '<p class="blurb">Postal addresses for your contacts, gathered here on the Contacts page — so a card, a letter, or a visit never waits on hunting for an address.</p>';
+          if (withAddress.length === 0) {
+            html += '<div style="margin-top: 1rem">' + emptyState("No mailing addresses yet. Add one to any contact above and it will be gathered here.") + "</div>";
+          } else {
+            html += '<ul class="stack" style="margin: 1rem 0 0; padding: 0; list-style: none">' + withAddress.map(function (c) {
+              return '<li class="card"><h3 style="margin:0;font-family:var(--font-display);font-size:1.25rem;font-weight:600">' + esc(c.name) +
+                '</h3><p class="pre-wrap" style="margin: 0.25rem 0 0">' + esc(c.address) + "</p></li>";
+            }).join("") + "</ul>";
+          }
+          html += "</section></div>";
+          content.innerHTML = html;
+
+          function rerender(next) { renderContacts._ui = next; renderContacts(); }
+          var search = $("[data-ct-search]", content);
+          if (search) search.addEventListener("input", function () {
+            var pos = search.selectionStart;
+            rerender({ search: search.value, showAdd: ui.showAdd, editingId: ui.editingId });
+            var again = $("[data-ct-search]", content);
+            if (again) { again.focus(); try { again.setSelectionRange(pos, pos); } catch (e) {} }
+          });
+          var addBtn = $("[data-ct-add]", content);
+          if (addBtn) addBtn.addEventListener("click", function () { rerender({ search: ui.search, showAdd: true }); });
+          $$("[data-ct-edit]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ search: ui.search, editingId: b.getAttribute("data-ct-edit") }); });
+          });
+          $$("[data-ct-del]", content).forEach(function (slot) {
+            slot.innerHTML = deleteBtnHtml("Delete this contact");
+            wireDelete(slot, function () {
+              dbDelete("chaplain_contacts", slot.getAttribute("data-ct-del")).then(function () { rerender({ search: ui.search }); });
+            });
+          });
+          $$("[data-ct-cancel]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ search: ui.search }); });
+          });
+          $$("[data-ct-form]", content).forEach(function (form) {
+            form.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var values = readContactForm(form);
+              if (!values.name) return;
+              var mode = form.getAttribute("data-ct-form");
+              var fail = function () {
+                var err = $("[data-ct-err]", form);
+                if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+              };
+              if (mode === "add") dbInsert("chaplain_contacts", values).then(function () { rerender({}); }).catch(fail);
+              else dbUpdate("chaplain_contacts", ui.editingId, values).then(function () { rerender({}); }).catch(fail);
+            });
+          });
+        });
+      }
+      renderContacts._ui = {};
+
+      /* ================================================================
+         Reminders
+         ================================================================ */
+      function reminderFormHtml(prefix, r, contacts) {
+        r = r || {};
+        var options = '<option value="">No one in particular</option>' + contacts.map(function (c) {
+          return '<option value="' + c.id + '"' + (r.contact_id === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>";
+        }).join("");
+        return '<form class="card form-stack" data-rm-form="' + prefix + '" aria-label="' + (prefix === "add" ? "Add a reminder" : "Edit reminder") + '">' +
+          fieldHtml("Reminder", '<input class="input" data-rm-title value="' + esc(r.title || "") + '" placeholder="Call back, visit, send the lesson…" required />') +
+          '<div class="grid-2">' +
+          fieldHtml("Date", '<input class="input" type="date" data-rm-date value="' + esc(r.due_date || todayYmd()) + '" required />') +
+          fieldHtml("About a contact (optional)", '<select class="input" data-rm-contact>' + options + "</select>") +
+          "</div>" +
+          fieldHtml("Details (optional)", '<textarea class="input" rows="3" data-rm-notes>' + esc(r.notes || "") + "</textarea>") +
+          '<p class="error-note hidden" data-rm-err></p>' +
+          '<div class="row"><button type="submit" class="btn-primary">' + (prefix === "add" ? "Save reminder" : "Save changes") + '</button>' +
+          '<button type="button" class="btn-ghost" data-rm-cancel>Cancel</button></div></form>';
+      }
+      function renderReminders() {
+        var content = $("#content");
+        var ui = renderReminders._ui || {};
+        return Promise.all([
+          dbList("chaplain_reminders", "due_date", true),
+          dbList("chaplain_contacts", "name", true),
+        ]).then(function (res) {
+          var all = res[0], contacts = res[1];
+          var byId = {};
+          contacts.forEach(function (c) { byId[c.id] = c.name; });
+          var today = todayYmd();
+          var open = all.filter(function (r) { return !r.done; });
+          var done = all.filter(function (r) { return r.done; });
+          function itemHtml(r) {
+            if (ui.editingId === r.id) return "<li>" + reminderFormHtml("edit", r, contacts) + "</li>";
+            var overdue = !r.done && r.due_date && r.due_date < today;
+            return '<li class="card"><div class="flex-start">' +
+              '<input type="checkbox" class="reminder-check" data-rm-toggle="' + r.id + '"' + (r.done ? " checked" : "") + ' aria-label="Mark this reminder as done" />' +
+              '<div class="grow"><p style="margin:0;font-weight:500" class="' + (r.done ? "done-text" : "") + '">' + esc(r.title) + "</p>" +
+              '<p style="margin: 0.125rem 0 0; font-size: 0.875rem; ' + (overdue ? "font-weight:600;color:var(--danger)" : "color:var(--brass)") + '">' +
+              esc(formatDueDate(r.due_date)) + (overdue ? " · overdue" : "") +
+              (r.contact_id && byId[r.contact_id] ? '<span style="color: var(--dim)"> · ' + esc(byId[r.contact_id]) + "</span>" : "") + "</p>" +
+              (r.notes ? '<p class="pre-wrap" style="margin: 0.375rem 0 0; font-size: 0.875rem">' + esc(r.notes) + "</p>" : "") +
+              '<div class="row" style="margin-top: 0.625rem"><button type="button" class="btn-small" data-rm-edit="' + r.id + '">Edit</button>' +
+              '<span data-rm-del="' + r.id + '"></span></div></div></div></li>';
+          }
+          var html = '<div class="stack" style="gap: 1.25rem">' +
+            '<div><h2 class="section-title">Reminders</h2>' +
+            '<p class="blurb">Call-backs, visits, and promises to keep — written down so nobody you shepherd falls through the cracks.</p></div>';
+          if (!ui.showAdd) html += '<div><button type="button" class="btn-primary" data-rm-add>+ Add a reminder</button></div>';
+          else html += reminderFormHtml("add", {}, contacts);
+          if (all.length === 0 && !ui.showAdd) html += emptyState("No reminders yet. Add the first follow-up above.");
+          if (open.length > 0) html += '<ul class="stack" style="margin:0;padding:0;list-style:none">' + open.map(itemHtml).join("") + "</ul>";
+          if (done.length > 0) {
+            html += '<section aria-label="Completed reminders"><h3 class="kicker" style="color: var(--dim); margin-bottom: 0.75rem">Done</h3>' +
+              '<ul class="stack" style="margin:0;padding:0;list-style:none">' + done.map(itemHtml).join("") + "</ul></section>";
+          }
+          html += "</div>";
+          content.innerHTML = html;
+
+          function rerender(next) { renderReminders._ui = next; renderReminders().then(refreshReminderBadge); }
+          var addBtn = $("[data-rm-add]", content);
+          if (addBtn) addBtn.addEventListener("click", function () { rerender({ showAdd: true }); });
+          $$("[data-rm-cancel]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({}); });
+          });
+          $$("[data-rm-edit]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ editingId: b.getAttribute("data-rm-edit") }); });
+          });
+          $$("[data-rm-toggle]", content).forEach(function (box) {
+            box.addEventListener("change", function () {
+              dbUpdate("chaplain_reminders", box.getAttribute("data-rm-toggle"), { done: box.checked })
+                .then(function () { rerender({}); }).catch(function () { rerender({}); });
+            });
+          });
+          $$("[data-rm-del]", content).forEach(function (slot) {
+            slot.innerHTML = deleteBtnHtml("Delete this reminder");
+            wireDelete(slot, function () {
+              dbDelete("chaplain_reminders", slot.getAttribute("data-rm-del")).then(function () { rerender({}); });
+            });
+          });
+          $$("[data-rm-form]", content).forEach(function (form) {
+            form.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var values = {
+                title: $("[data-rm-title]", form).value.trim(),
+                due_date: $("[data-rm-date]", form).value,
+                contact_id: $("[data-rm-contact]", form).value || null,
+                notes: $("[data-rm-notes]", form).value.trim() || null,
+              };
+              if (!values.title || !values.due_date) return;
+              var mode = form.getAttribute("data-rm-form");
+              var fail = function () {
+                var err = $("[data-rm-err]", form);
+                if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+              };
+              if (mode === "add") dbInsert("chaplain_reminders", values).then(function () { rerender({}); }).catch(fail);
+              else dbUpdate("chaplain_reminders", ui.editingId, values).then(function () { rerender({}); }).catch(fail);
+            });
+          });
+        });
+      }
+      renderReminders._ui = {};
+
+      /* ================================================================
+         Notes tab — personal notes + saved study notes
+         ================================================================ */
+      function studyNoteCardHtml(n) {
+        return '<article class="card" data-snote="' + n.id + '">' +
+          '<div class="between"><h3 style="margin:0;font-family:var(--font-display);font-size:1.25rem;font-weight:600">' + esc(n.query || "Study note") + "</h3>" +
+          '<span style="font-size:0.75rem;color:var(--dim)">' + esc(formatDate(n.created_at)) + "</span></div>" +
+          '<p class="pre-wrap" style="margin: 0.5rem 0 0; line-height: 1.6">' + esc(n.result || "") + "</p>" +
+          '<div style="margin-top: 1rem"><span data-snote-del></span></div></article>';
+      }
+      function wireStudyNoteDeletes(scope, rerender) {
+        $$("[data-snote]", scope).forEach(function (card) {
+          var slot = $("[data-snote-del]", card);
+          if (!slot) return;
+          slot.innerHTML = deleteBtnHtml("Delete this study note");
+          wireDelete(slot, function () {
+            dbDelete("chaplain_study_notes", card.getAttribute("data-snote")).then(rerender);
+          });
+        });
+      }
+      function renderNotes() {
+        var content = $("#content");
+        var ui = renderNotes._ui || {};
+        return Promise.all([
+          dbList("chaplain_notes", "created_at", false),
+          dbList("chaplain_study_notes", "created_at", false),
+        ]).then(function (res) {
+          var notes = res[0], saved = res[1].slice(0, 30);
+          content.innerHTML =
+            '<div class="stack-lg">' +
+            '<div><h2 class="section-title">Notes</h2>' +
+            '<p class="blurb">All your notes in one place — your own, and the ones you saved from the Library Assistant.</p></div>' +
+            '<div id="notes-pn">' + personalNotesHtml(notes, ui.pn || {}) + "</div>" +
+            '<section aria-label="Study notes from the library assistant"><h2 class="h-display">From the library assistant</h2>' +
+            '<p class="blurb">Lookups you saved on the Study tab, kept with their cross-references and sources.</p>' +
+            (saved.length === 0
+              ? '<div style="margin-top: 1rem">' + emptyState("No saved study notes yet. Look a word or topic up on the Study tab, save it, and it will be kept here.") + "</div>"
+              : '<div class="stack" style="margin-top: 1rem" id="notes-saved">' + saved.map(studyNoteCardHtml).join("") + "</div>") +
+            "</section></div>";
+          wireCrudSection($("#notes-pn"), "pn", function (u) {
+            renderNotes._ui = { pn: u };
+            renderNotes();
+          });
+          wireStudyNoteDeletes(content, function () { renderNotes(); });
+        });
+      }
+      renderNotes._ui = {};
+
+      /* ================================================================
+         Templates page + Addresses / Lessons (writings)
+         ================================================================ */
+      function templatesSectionHtml(kind, heading, templates, fields, ui) {
+        var mine = templates.filter(function (t) { return t.kind === kind; });
+        var starters = STARTER_TEMPLATES.filter(function (t) { return t.kind === kind; });
+        var items = mine.map(function (t) {
+          if (ui.editingId === t.id) {
+            return '<li class="card"><form class="form-stack" data-tp-edit-form="' + t.id + '">' +
+              fieldHtml("Template name", '<input class="input" data-tp-ename value="' + esc(t.label) + '" required />') +
+              fieldHtml("Template text", '<textarea class="input" rows="10" data-tp-ebody>' + esc(t.body || "") + "</textarea>") +
+              autofillToolsHtml(fields, "tp-edit") +
+              '<p class="error-note hidden" data-tp-err></p>' +
+              '<div class="row"><button type="submit" class="btn-primary">Save template</button>' +
+              '<button type="button" class="btn-ghost" data-tp-cancel>Cancel</button></div></form></li>';
+          }
+          return '<li class="card"><p style="margin:0;font-weight:600">' + esc(t.label) + "</p>" +
+            '<details style="margin-top: 0.5rem"><summary style="font-size:0.875rem;font-weight:500;color:var(--accent)">Preview template</summary>' +
+            '<pre class="pre-wrap" style="margin: 0.5rem 0 0; font-size: 0.875rem; font-family: inherit">' + esc(t.body || "") + "</pre></details>" +
+            '<div class="row" style="margin-top: 0.75rem"><button type="button" class="btn-small" data-tp-edit="' + t.id + '">Edit</button>' +
+            '<span data-tp-del="' + t.id + '"></span></div></li>';
+        }).join("");
+        var addBlock = ui.showAdd
+          ? '<form class="card form-stack" data-tp-add-form style="margin-top: 1rem">' +
+            fieldHtml("Template name", '<input class="input" data-tp-name placeholder="e.g. Hospital visit lesson" required />') +
+            fieldHtml("Template text", '<textarea class="input" rows="10" data-tp-body placeholder="Headings, prompts, and placeholders — the shape, not the sermon."></textarea>') +
+            autofillToolsHtml(fields, "tp-add") +
+            '<p class="error-note hidden" data-tp-err></p>' +
+            '<div class="row"><button type="submit" class="btn-primary">Save template</button>' +
+            '<button type="button" class="btn-ghost" data-tp-add-cancel>Cancel</button></div></form>'
+          : '<div style="margin-top: 1rem"><button type="button" class="btn-ghost" data-tp-add>+ New template</button></div>';
+        return '<section aria-label="' + esc(heading) + '" style="margin-top: 2.5rem" data-tp-section="' + kind + '">' +
+          '<h3 class="h-display">' + esc(heading) + "</h3>" +
+          '<p class="blurb">Keep the shapes you reuse — an outline you trust means the next ' + (kind === "lesson" ? "lesson" : "address") +
+          ' starts half-built instead of from a blank page. Put your {{placeholders}} from My Information in a template and they fill in by themselves when you start a ' +
+          (kind === "lesson" ? "lesson" : "address") + " from it.</p>" +
+          (mine.length > 0 ? '<ul class="stack" style="margin: 1rem 0 0; padding: 0; list-style: none">' + items + "</ul>" : "") +
+          addBlock +
+          (starters.length > 0
+            ? '<div style="margin-top: 1.5rem"><h4 class="kicker" style="color: var(--dim); font-size: 0.875rem">Starter outlines</h4>' +
+              '<ul class="stack" style="margin: 0.5rem 0 0; padding: 0; list-style: none">' + starters.map(function (s, i) {
+                return '<li class="card" style="border-style: dashed; padding: 0.625rem 1rem"><div class="between"><span style="font-size:0.875rem;font-weight:500">' +
+                  esc(s.name) + '</span><button type="button" class="btn-small" data-tp-starter="' + i + '">Copy to my templates</button></div></li>';
+              }).join("") + "</ul></div>"
+            : "") +
+          "</section>";
+      }
+      function wireTemplatesSection(section, kind, fields, rerender) {
+        if (!section) return;
+        function fail(form) {
+          var err = $("[data-tp-err]", form);
+          if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+        }
+        var addBtn = $("[data-tp-add]", section);
+        if (addBtn) addBtn.addEventListener("click", function () { rerender(kind, { showAdd: true }); });
+        var addCancel = $("[data-tp-add-cancel]", section);
+        if (addCancel) addCancel.addEventListener("click", function () { rerender(kind, {}); });
+        var addForm = $("[data-tp-add-form]", section);
+        if (addForm) {
+          var addTa = $("[data-tp-body]", addForm);
+          wireAutofillTools(addForm, fields,
+            function () { return addTa; },
+            function () { return addTa.value; },
+            function (v) { addTa.value = v; });
+          addForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var name = $("[data-tp-name]", addForm).value.trim();
+            if (!name) return;
+            dbInsert("chaplain_templates", { kind: kind, label: name, body: addTa.value })
+              .then(function () { rerender(kind, {}); }).catch(function () { fail(addForm); });
+          });
+        }
+        $$("[data-tp-edit]", section).forEach(function (b) {
+          b.addEventListener("click", function () { rerender(kind, { editingId: b.getAttribute("data-tp-edit") }); });
+        });
+        $$("[data-tp-cancel]", section).forEach(function (b) {
+          b.addEventListener("click", function () { rerender(kind, {}); });
+        });
+        $$("[data-tp-del]", section).forEach(function (slot) {
+          slot.innerHTML = deleteBtnHtml("Delete this template");
+          wireDelete(slot, function () {
+            dbDelete("chaplain_templates", slot.getAttribute("data-tp-del")).then(function () { rerender(kind, {}); });
+          });
+        });
+        $$("[data-tp-edit-form]", section).forEach(function (form) {
+          var ta = $("[data-tp-ebody]", form);
+          wireAutofillTools(form, fields,
+            function () { return ta; },
+            function () { return ta.value; },
+            function (v) { ta.value = v; });
+          form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var name = $("[data-tp-ename]", form).value.trim();
+            if (!name) return;
+            dbUpdate("chaplain_templates", form.getAttribute("data-tp-edit-form"), { label: name, body: ta.value })
+              .then(function () { rerender(kind, {}); }).catch(function () { fail(form); });
+          });
+        });
+        $$("[data-tp-starter]", section).forEach(function (b) {
+          b.addEventListener("click", function () {
+            var starters = STARTER_TEMPLATES.filter(function (t) { return t.kind === kind; });
+            var s = starters[Number(b.getAttribute("data-tp-starter"))];
+            if (!s) return;
+            b.disabled = true;
+            dbInsert("chaplain_templates", { kind: kind, label: s.name, body: s.body })
+              .then(function () { rerender(kind, {}); }).catch(function () { b.disabled = false; });
+          });
+        });
+      }
+      function renderTemplates() {
+        var content = $("#content");
+        var ui = renderTemplates._ui || { address: {}, lesson: {} };
+        return Promise.all([
+          dbList("chaplain_templates", "created_at", true),
+          getProfileFields(),
+        ]).then(function (res) {
+          var templates = res[0], fields = res[1];
+          content.innerHTML =
+            '<div><h2 class="section-title">Templates</h2>' +
+            '<p class="blurb">The shapes you reuse, kept together — start a new address or lesson from one of these and the outline is already there.</p></div>' +
+            templatesSectionHtml("address", "Address templates", templates, fields, ui.address || {}) +
+            templatesSectionHtml("lesson", "Lesson templates", templates, fields, ui.lesson || {});
+          function rerender(kind, sectionUi) {
+            var next = { address: ui.address || {}, lesson: ui.lesson || {} };
+            next[kind] = sectionUi;
+            renderTemplates._ui = next;
+            renderTemplates();
+          }
+          wireTemplatesSection($('[data-tp-section="address"]', content), "address", fields, rerender);
+          wireTemplatesSection($('[data-tp-section="lesson"]', content), "lesson", fields, rerender);
+        });
+      }
+      renderTemplates._ui = { address: {}, lesson: {} };
+
+      function writingFormHtml(kind, w, submitLabel) {
+        w = w || {};
+        var ready = w.ready === true;
+        return '<form class="card form-stack" data-wr-form aria-label="' + (w.id ? "Edit" : "New") + " " + kind + '">' +
+          fieldHtml("Title", '<input class="input" data-wr-title value="' + esc(w.title || "") + '" required />') +
+          fieldHtml("Status", '<select class="input" data-wr-status style="max-width: 12rem"><option value="draft"' + (ready ? "" : " selected") + '>Draft</option><option value="ready"' + (ready ? " selected" : "") + ">Ready</option></select>") +
+          fieldHtml("Text", '<textarea class="input writing-body" rows="14" data-wr-body placeholder="Write it out here…">' + esc(w.body || "") + "</textarea>") +
+          '<div data-wr-aftools></div>' +
+          '<p class="error-note hidden" data-wr-err></p>' +
+          '<div class="row"><button type="submit" class="btn-primary">' + esc(submitLabel) + '</button>' +
+          '<button type="button" class="btn-ghost" data-wr-cancel>Cancel</button></div></form>';
+      }
+      function renderWritings(kind) {
+        var content = $("#content");
+        var ui = (renderWritings._ui || {})[kind] || {};
+        return Promise.all([
+          dbList("chaplain_writings", "created_at", false),
+          dbList("chaplain_templates", "created_at", true),
+          getProfileFields(),
+        ]).then(function (res) {
+          var all = res[0].filter(function (w) { return w.kind === kind; });
+          var templates = res[1], fields = res[2];
+          var myTemplates = templates.filter(function (t) { return t.kind === kind; });
+          var starters = STARTER_TEMPLATES.filter(function (t) { return t.kind === kind; });
+          var title = kind === "lesson" ? "Lessons" : "Addresses";
+          var blurb = kind === "lesson"
+            ? "Lessons you are preparing or have ready to teach. Start from a template below and the shape is already there — you just fill it with the Word."
+            : "Addresses to the community, written and kept here — drafts while you work on them, marked ready when they are set to give.";
+          var startBtns = myTemplates.concat(starters.map(function (s) { return { label: s.name, body: s.body, starter: true }; })).map(function (t, i) {
+            return '<button type="button" class="btn-ghost" data-wr-start="' + i + '">Start from &ldquo;' + esc(t.label) + "&rdquo;</button>";
+          }).join("");
+          var startSources = myTemplates.map(function (t) { return t.body; }).concat(starters.map(function (s) { return s.body; }));
+          var html = '<div class="stack" style="gap: 1.25rem">' +
+            '<div><h2 class="section-title">' + title + '</h2><p class="blurb">' + blurb + "</p></div>" +
+            '<div class="row">' + (ui.showAdd ? "" : '<button type="button" class="btn-primary" data-wr-new>+ New ' + (kind === "lesson" ? "lesson" : "address") + "</button>") + startBtns + "</div>";
+          if (ui.showAdd) html += writingFormHtml(kind, ui.draft || {}, kind === "lesson" ? "Save lesson" : "Save address");
+          if (all.length === 0 && !ui.showAdd) {
+            html += emptyState(kind === "lesson"
+              ? "No lessons yet. Start one from a template above, or write one from scratch."
+              : "No addresses yet. When you have something to say to the community, draft it here.");
+          }
+          html += '<ul class="stack" style="margin:0;padding:0;list-style:none">';
+          all.forEach(function (w) {
+            if (ui.editingId === w.id) {
+              html += "<li>" + writingFormHtml(kind, w, "Save changes") + "</li>";
+              return;
+            }
+            var open = ui.openId === w.id;
+            html += '<li class="card"><div class="between">' +
+              '<h3 style="margin:0;font-family:var(--font-display);font-size:1.25rem;font-weight:600">' + esc(w.title || "Untitled") + "</h3>" +
+              '<span class="badge ' + (w.ready ? "badge-ready" : "badge-draft") + '">' + (w.ready ? "Ready" : "Draft") + "</span></div>" +
+              '<p style="margin: 0.125rem 0 0; font-size: 0.875rem; color: var(--dim)">Updated ' + esc(formatDate(w.updated_at)) + "</p>" +
+              (open
+                ? '<div class="pre-wrap" style="margin-top: 0.75rem; line-height: 1.6">' + (w.body ? esc(w.body) : '<span style="color: var(--dim)">Nothing written yet.</span>') + '</div><button type="button" class="btn-small" style="margin-top: 0.75rem" data-wr-close="' + w.id + '">Close</button>'
+                : '<button type="button" class="btn-small" style="margin-top: 0.75rem" data-wr-read="' + w.id + '">Read</button>') +
+              '<div class="row" style="margin-top: 0.75rem"><button type="button" class="btn-small" data-wr-edit="' + w.id + '">Edit</button>' +
+              '<button type="button" class="btn-small" data-wr-status-toggle="' + w.id + '">' + (w.ready ? "Back to draft" : "Mark ready") + "</button>" +
+              '<span data-wr-del="' + w.id + '"></span></div></li>';
+          });
+          html += "</ul></div>";
+          content.innerHTML = html;
+
+          function rerender(next) {
+            renderWritings._ui = renderWritings._ui || {};
+            renderWritings._ui[kind] = next;
+            renderWritings(kind);
+          }
+          function wireForm(form, editingId) {
+            if (!form) return;
+            var ta = $("[data-wr-body]", form);
+            var slot = $("[data-wr-aftools]", form);
+            if (slot) {
+              slot.innerHTML = autofillToolsHtml(fields, "wr");
+              wireAutofillTools(form, fields,
+                function () { return ta; },
+                function () { return ta.value; },
+                function (v) { ta.value = v; });
+            }
+            var cancel = $("[data-wr-cancel]", form);
+            if (cancel) cancel.addEventListener("click", function () { rerender({}); });
+            form.addEventListener("submit", function (e) {
+              e.preventDefault();
+              var values = {
+                kind: kind,
+                title: $("[data-wr-title]", form).value.trim(),
+                body: ta.value,
+                ready: $("[data-wr-status]", form).value === "ready",
+              };
+              if (!values.title) return;
+              var fail = function () {
+                var err = $("[data-wr-err]", form);
+                if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+              };
+              if (editingId) dbUpdate("chaplain_writings", editingId, values).then(function () { rerender({}); }).catch(fail);
+              else dbInsert("chaplain_writings", values).then(function () { rerender({}); }).catch(fail);
+            });
+          }
+          if (ui.showAdd) wireForm($("[data-wr-form]", content), null);
+          if (ui.editingId) wireForm($("[data-wr-form]", content), ui.editingId);
+          var newBtn = $("[data-wr-new]", content);
+          if (newBtn) newBtn.addEventListener("click", function () { rerender({ showAdd: true, draft: {} }); });
+          $$("[data-wr-start]", content).forEach(function (b) {
+            b.addEventListener("click", function () {
+              var body = startSources[Number(b.getAttribute("data-wr-start"))] || "";
+              rerender({ showAdd: true, draft: { body: fillPlaceholders(body, fields) } });
+            });
+          });
+          $$("[data-wr-read]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ openId: b.getAttribute("data-wr-read") }); });
+          });
+          $$("[data-wr-close]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({}); });
+          });
+          $$("[data-wr-edit]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ editingId: b.getAttribute("data-wr-edit") }); });
+          });
+          $$("[data-wr-status-toggle]", content).forEach(function (b) {
+            b.addEventListener("click", function () {
+              var w = all.filter(function (x) { return x.id === b.getAttribute("data-wr-status-toggle"); })[0];
+              if (!w) return;
+              b.disabled = true;
+              dbUpdate("chaplain_writings", w.id, { ready: !w.ready }).then(function () { rerender({}); }).catch(function () { rerender({}); });
+            });
+          });
+          $$("[data-wr-del]", content).forEach(function (slot) {
+            slot.innerHTML = deleteBtnHtml("Delete this " + kind);
+            wireDelete(slot, function () {
+              dbDelete("chaplain_writings", slot.getAttribute("data-wr-del")).then(function () { rerender({}); });
+            });
+          });
+        });
+      }
+      renderWritings._ui = {};
+
+      /* ================================================================
+         Resources — Strong's lookup, the Apocrypha, My Own Links
+         ================================================================ */
+      function renderResources() {
+        var content = $("#content");
+        var ui = renderResources._ui || {};
+        return dbList("chaplain_links", "position", true).then(function (links) {
+          var lang = ui.lang || "greek";
+          var html = '<div class="stack-lg">' +
+            '<div><h2 class="section-title">Resources</h2>' +
+            '<p class="blurb">The resources you reach for, all in one place — the concordance for the original languages, the Apocrypha in full, and the links you trust.</p></div>' +
+            '<section aria-label="Strong\'s Concordance lookup"><h3 class="h-display">Strong&rsquo;s Concordance</h3>' +
+            '<p class="blurb">Every word of Scripture carries a number. Type it here — G for Greek, H for Hebrew — and open the full entry: the original word, how it is pronounced, what it means, and everywhere it appears. ' +
+            '<a class="ext-link" href="' + STRONGS_ABOUT_URL + '" target="_blank" rel="noreferrer">What is Strong&rsquo;s Concordance? ↗</a></p>' +
+            '<form class="row" style="margin-top: 1rem; align-items: flex-end" data-rs-form>' +
+            '<div role="group" aria-label="Language" style="display:flex">' +
+            '<button type="button" class="btn-ghost" data-rs-lang="greek" aria-pressed="' + (lang === "greek") + '" style="border-radius: var(--radius) 0 0 var(--radius); ' + (lang === "greek" ? "background: var(--accent); color: var(--accent-text); border-color: var(--accent)" : "") + '">Greek (G)</button>' +
+            '<button type="button" class="btn-ghost" data-rs-lang="hebrew" aria-pressed="' + (lang === "hebrew") + '" style="border-radius: 0 var(--radius) var(--radius) 0; border-left: none; ' + (lang === "hebrew" ? "background: var(--accent); color: var(--accent-text); border-color: var(--accent)" : "") + '">Hebrew (H)</button></div>' +
+            '<label class="hidden" for="strongs-number">Strong&rsquo;s number</label>' +
+            '<input id="strongs-number" class="input" style="width: 9rem" inputmode="numeric" data-rs-num value="' + esc(ui.numText || "") + '" placeholder="e.g. 3056" />' +
+            '<button type="submit" class="btn-primary">Look it up</button></form>' +
+            (ui.error ? '<p class="error-note" role="alert" style="margin-top: 0.5rem">' + esc(ui.error) + "</p>" : "") +
+            (ui.lookedUp ? '<div class="card" style="margin-top: 1rem"><p style="margin:0;font-weight:600">Strong&rsquo;s ' +
+              (ui.lookedUp.language === "greek" ? "Greek G" : "Hebrew H") + ui.lookedUp.num + '</p>' +
+              '<div class="row" style="margin-top: 0.5rem; column-gap: 1.25rem; font-size: 0.875rem">' +
+              '<a class="ext-link" href="' + bibleHubStrongsUrl(ui.lookedUp.language, ui.lookedUp.num) + '" target="_blank" rel="noreferrer">Open in BibleHub ↗</a>' +
+              '<a class="ext-link" href="' + blueLetterStrongsUrl(ui.lookedUp.language, ui.lookedUp.num) + '" target="_blank" rel="noreferrer">Open in Blue Letter Bible ↗</a></div>' +
+              '<p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--dim)">Two sources for the same word — when they agree, you can teach it with confidence; when they differ, you know where to dig.</p></div>' : "") +
+            "</section>" +
+            '<section aria-label="The Apocrypha"><h3 class="h-display">The Apocrypha</h3>' +
+            '<p class="blurb">The fourteen books printed in the original 1611 King James Bible, between the Old and New Testaments. Read the complete collection here:</p>' +
+            '<div class="row" style="margin-top: 0.75rem; column-gap: 1.25rem; font-size: 0.875rem">' +
+            '<a class="ext-link" href="' + APOCRYPHA_INDEX_URL + '" target="_blank" rel="noreferrer">The full Apocrypha — King James Bible Online ↗</a>' +
+            '<a class="ext-link" href="' + APOCRYPHA_FULLTEXT_URL + '" target="_blank" rel="noreferrer">KJV with Apocrypha, free full text — Words of Refuge ↗</a></div>' +
+            '<ol class="grid-2" style="margin: 1rem 0 0; padding: 0; list-style: none">' +
+            APOCRYPHA_BOOKS.map(function (book, i) {
+              return '<li style="display:flex;gap:0.5rem;font-size:0.875rem"><span style="width:1.5rem;text-align:right;font-weight:600;color:var(--brass)">' + (i + 1) + '.</span><span>' + esc(book) + "</span></li>";
+            }).join("") + "</ol></section>" +
+            '<section aria-label="My own links"><h3 class="h-display">My Own Links</h3>' +
+            '<p class="blurb">The sources you already trust and use — add them here as you settle on them, and these resources become yours.</p>';
+          if (links.length === 0 && !ui.showAddLink) {
+            html += '<div style="margin-top: 0.75rem">' + emptyState("None yet. When you tell us which study sites you already use, they will live here — or add them yourself below.") + "</div>";
+          }
+          if (links.length > 0) {
+            html += '<ul class="stack" style="margin: 0.75rem 0 0; padding: 0; list-style: none">' + links.map(function (l) {
+              if (ui.editingLinkId === l.id) {
+                return '<li class="card"><form class="form-stack" data-rs-link-edit-form="' + l.id + '">' +
+                  fieldHtml("Name for the link", '<input class="input" data-rs-elabel value="' + esc(l.label) + '" required />') +
+                  fieldHtml("Web address", '<input class="input" type="url" data-rs-eurl value="' + esc(l.url) + '" required />') +
+                  fieldHtml("Note (optional)", '<input class="input" data-rs-enote value="' + esc(l.note || "") + '" />') +
+                  '<p class="error-note hidden" data-rs-err></p>' +
+                  '<div class="row"><button type="submit" class="btn-primary">Save link</button>' +
+                  '<button type="button" class="btn-ghost" data-rs-link-cancel>Cancel</button></div></form></li>';
+              }
+              return '<li class="card" style="padding: 0.625rem 1rem"><div class="between"><span style="min-width:0"><a class="ext-link" href="' + esc(l.url) + '" target="_blank" rel="noreferrer">' + esc(l.label) + " ↗</a>" +
+                (l.note ? '<span style="display:block;font-size:0.875rem;color:var(--dim)">' + esc(l.note) + "</span>" : "") + "</span>" +
+                '<span class="row"><button type="button" class="btn-small" data-rs-link-edit="' + l.id + '">Edit</button><span data-rs-link-del="' + l.id + '"></span></span></div></li>';
+            }).join("") + "</ul>";
+          }
+          if (ui.showAddLink) {
+            html += '<form class="card form-stack" data-rs-link-form style="margin-top: 1rem">' +
+              fieldHtml("Name for the link", '<input class="input" data-rs-label placeholder="e.g. My Greek interlinear" required />') +
+              fieldHtml("Web address", '<input class="input" type="url" data-rs-url placeholder="https://…" required />') +
+              fieldHtml("Note (optional)", '<input class="input" data-rs-note placeholder="What you use it for" />') +
+              '<p class="error-note hidden" data-rs-err></p>' +
+              '<div class="row"><button type="submit" class="btn-primary">Add link</button>' +
+              '<button type="button" class="btn-ghost" data-rs-link-add-cancel>Cancel</button></div></form>';
+          } else {
+            html += '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-rs-link-add>+ Add a link</button></div>';
+          }
+          html += "</section></div>";
+          content.innerHTML = html;
+
+          function rerender(next) {
+            renderResources._ui = Object.assign({}, ui, next);
+            renderResources();
+          }
+          $$("[data-rs-lang]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ lang: b.getAttribute("data-rs-lang") }); });
+          });
+          var form = $("[data-rs-form]", content);
+          if (form) form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var text = $("[data-rs-num]", form).value;
+            var cleaned = text.trim().replace(/^[GHgh]/, "");
+            var num = Number(cleaned);
+            if (!/^\d+$/.test(cleaned) || num < 1 || num > 9999) {
+              rerender({ numText: text, error: "Enter just the number — for example 3056 for Greek λόγος (logos), or 1697 for Hebrew דָּבָר (dabar).", lookedUp: null });
+              return;
+            }
+            rerender({ numText: text, error: null, lookedUp: { language: lang, num: num } });
+          });
+          var addBtn = $("[data-rs-link-add]", content);
+          if (addBtn) addBtn.addEventListener("click", function () { rerender({ showAddLink: true }); });
+          var addCancel = $("[data-rs-link-add-cancel]", content);
+          if (addCancel) addCancel.addEventListener("click", function () { rerender({ showAddLink: false }); });
+          var linkForm = $("[data-rs-link-form]", content);
+          if (linkForm) linkForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            var label = $("[data-rs-label]", linkForm).value.trim();
+            var url = $("[data-rs-url]", linkForm).value.trim();
+            if (!label || !url) return;
+            var maxPos = links.reduce(function (m, x) { return Math.max(m, x.position || 0); }, 0);
+            dbInsert("chaplain_links", { label: label, url: url, note: $("[data-rs-note]", linkForm).value.trim() || null, position: maxPos + 1 })
+              .then(function () { rerender({ showAddLink: false }); })
+              .catch(function () {
+                var err = $("[data-rs-err]", linkForm);
+                if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+              });
+          });
+          $$("[data-rs-link-edit]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ editingLinkId: b.getAttribute("data-rs-link-edit") }); });
+          });
+          $$("[data-rs-link-cancel]", content).forEach(function (b) {
+            b.addEventListener("click", function () { rerender({ editingLinkId: null }); });
+          });
+          $$("[data-rs-link-edit-form]", content).forEach(function (f) {
+            f.addEventListener("submit", function (e) {
+              e.preventDefault();
+              dbUpdate("chaplain_links", f.getAttribute("data-rs-link-edit-form"), {
+                label: $("[data-rs-elabel]", f).value.trim(),
+                url: $("[data-rs-eurl]", f).value.trim(),
+                note: $("[data-rs-enote]", f).value.trim() || null,
+              }).then(function () { rerender({ editingLinkId: null }); })
+                .catch(function () {
+                  var err = $("[data-rs-err]", f);
+                  if (err) { err.textContent = "Something went wrong saving that. Please try again."; err.classList.remove("hidden"); }
+                });
+            });
+          });
+          $$("[data-rs-link-del]", content).forEach(function (slot) {
+            slot.innerHTML = deleteBtnHtml("Delete this link");
+            wireDelete(slot, function () {
+              dbDelete("chaplain_links", slot.getAttribute("data-rs-link-del")).then(function () { rerender({}); });
+            });
+          });
+        });
+      }
+      renderResources._ui = {};
+
+      /* ================================================================
+         Characters — built-in reference content
+         ================================================================ */
+      function renderCharacters() {
+        var content = $("#content");
+        var ui = renderCharacters._ui || {};
+        var q = (ui.search || "").trim().toLowerCase();
+        function matches(text) { return String(text || "").toLowerCase().indexOf(q) >= 0; }
+        var characters = q ? BIBLE_CHARACTERS.filter(function (c) {
+          return matches(c.name) || matches(c.title) || matches(c.summary) ||
+            c.themes.some(matches) || c.keyScriptures.some(function (s) { return matches(s.reference) || matches(s.note); });
+        }) : BIBLE_CHARACTERS;
+        var philosophers = q ? GREEK_PHILOSOPHERS.filter(function (p) {
+          return matches(p.name) || matches(p.school) || matches(p.dates) || matches(p.knownFor);
+        }) : GREEK_PHILOSOPHERS;
+        var html = '<div class="stack-lg">' +
+          '<div><h2 class="section-title">Characters</h2>' +
+          '<p class="blurb">The people of Scripture to study and teach from — and, as a bonus, the Greek philosophers whose questions the ancient world was asking when the gospel arrived.</p>' +
+          '<label class="hidden" for="characters-search">Search characters and philosophers</label>' +
+          '<input id="characters-search" class="input" style="margin-top: 1rem" data-ch-search value="' + esc(ui.search || "") + '" placeholder="Search by name, theme, school, or scripture…" /></div>';
+        if (characters.length === 0 && philosophers.length === 0) {
+          html += emptyState("Nobody by that name here. Try a name, a theme like &ldquo;courage&rdquo;, or a school like &ldquo;Stoic&rdquo;.");
+        }
+        if (characters.length > 0) {
+          html += '<section aria-label="Characters of Scripture"><h3 class="h-display">Characters of Scripture</h3><div class="stack" style="margin-top: 1rem">' +
+            characters.map(function (c) {
+              return '<article class="card"><h3 style="margin:0;font-family:var(--font-display);font-size:1.5rem;font-weight:600">' + esc(c.name) + "</h3>" +
+                '<p class="kicker-sm" style="margin-top: 0.125rem">' + esc(c.title) + "</p>" +
+                '<p style="margin: 0.75rem 0 0; max-width: 65ch; line-height: 1.6">' + esc(c.summary) + "</p>" +
+                '<h4 style="margin: 1rem 0 0; font-size: 0.875rem; font-weight: 600">Key scriptures</h4>' +
+                '<ul style="margin: 0.375rem 0 0; padding: 0; list-style: none">' + c.keyScriptures.map(function (s) {
+                  return '<li style="margin-top: 0.375rem; font-size: 0.875rem"><span style="font-weight:600;color:var(--accent)">' + esc(s.reference) + '</span> <span style="color: var(--dim)">— ' + esc(s.note) + "</span></li>";
+                }).join("") + "</ul>" +
+                '<div class="row" style="margin-top: 1rem">' + c.themes.map(function (t) {
+                  return '<span class="chip chip-static">' + esc(t) + "</span>";
+                }).join("") + "</div></article>";
+            }).join("") + "</div></section>";
+        }
+        if (philosophers.length > 0) {
+          html += '<section aria-label="Bonus list: the Greek philosophers"><h3 class="h-display">Bonus List — The Greek Philosophers</h3>' +
+            '<p class="blurb">From Thales, who started it all, to Hypatia, among the last of the ancient schools — as many as we could fit in one list.</p>' +
+            '<ul class="phil-grid" style="margin: 1rem 0 0; padding: 0; list-style: none">' + philosophers.map(function (p) {
+              return '<li class="card" style="padding: 0.875rem"><p style="margin:0;font-weight:600">' + esc(p.name) + "</p>" +
+                '<p class="kicker-sm" style="margin-top: 0.125rem; font-size: 0.75rem">' + esc(p.dates) + " · " + esc(p.school) + "</p>" +
+                '<p style="margin: 0.375rem 0 0; font-size: 0.875rem; color: var(--dim)">' + esc(p.knownFor) + "</p></li>";
+            }).join("") + "</ul></section>";
+        }
+        html += "</div>";
+        content.innerHTML = html;
+        var search = $("[data-ch-search]", content);
+        if (search) search.addEventListener("input", function () {
+          var pos = search.selectionStart;
+          renderCharacters._ui = { search: search.value };
+          renderCharacters();
+          var again = $("[data-ch-search]", content);
+          if (again) { again.focus(); try { again.setSelectionRange(pos, pos); } catch (e) {} }
+        });
+        return Promise.resolve();
+      }
+      renderCharacters._ui = {};
+
+      /* ================================================================
+         Study — the static Library Assistant.
+         Retrieval only: it looks the word or question up in the
+         dictionaries, thesaurus, and antonyms wired in from the
+         Chaplain Repository Archive, plus the built-in cross-reference
+         topics and character profiles, and shows the material itself.
+         Nothing is generated and nothing is invented.
+         ================================================================ */
+      var REPO_URL = "https://github.com/thecitizenmovement-org/chaplain-repository-archive";
+      var REPO_DICTIONARIES_URL = REPO_URL + "/tree/main/dictionaries";
+      var REPO_THESAURUS_URL = REPO_URL + "/tree/main/thesaurus";
+      var REPO_ANTONYMS_URL = REPO_URL + "/tree/main/antonyms";
+      var REPO_INDEX_URL = REPO_URL + "/blob/main/study/assistant-index.json";
+
+      // The library files sit beside this page when it is hosted (in
+      // chaplain-data/, next to chaplain-cms.html) and are fetched on
+      // demand — a file is fetched the first time a lookup needs it and
+      // kept in memory, so repeat lookups do not fetch it again. If a
+      // fetch fails (for example in a preview away from those files),
+      // the lookup reports it and the rest of the CMS carries on.
+      var dict = {
+        all: [], byNumber: {}, byTranslitExact: {}, byTranslit: {},
+        englishIndex: null, greekLoaded: false, hebrewLoaded: false,
+      };
+      var fetchCache = {};
+      function fetchJson(path) {
+        if (fetchCache[path]) return fetchCache[path];
+        var p = fetch("chaplain-data/" + path).then(function (res) {
+          if (!res.ok) throw new Error("library-load");
+          return res.json();
+        }).then(function (data) { return data; }, function (e) {
+          delete fetchCache[path];
+          throw e;
+        });
+        fetchCache[path] = p;
+        return p;
+      }
+      function addEntries(entries) {
+        entries.forEach(function (e) {
+          dict.all.push(e);
+          dict.byNumber[e.number.toUpperCase()] = e;
+          var ex = normText(e.translit);
+          if (ex && !dict.byTranslitExact[ex]) dict.byTranslitExact[ex] = e;
+          var key = canonText(e.translit);
+          if (key && !dict.byTranslit[key]) dict.byTranslit[key] = e;
+        });
+        dict.englishIndex = null;
+      }
+      var greekPromise = null;
+      var hebrewPromise = null;
+      function loadLanguage(language) {
+        if (language === "Greek") {
+          if (dict.greekLoaded) return Promise.resolve();
+          if (!greekPromise) {
+            greekPromise = fetchJson("strongs-greek.json").then(function (data) {
+              addEntries(Object.keys(data).map(function (k) {
+                var o = data[k] || {};
+                return {
+                  number: o.id || k, language: "Greek", lemma: o.lemma || "",
+                  translit: o.translit || "", pron: o.pron || "",
+                  definition: o.strongs_def || "", kjv: o.kjv_def || "", senses: undefined,
+                };
+              }));
+              dict.greekLoaded = true;
+            }).then(function () {}, function (e) { greekPromise = null; throw e; });
+          }
+          return greekPromise;
+        }
+        if (dict.hebrewLoaded) return Promise.resolve();
+        if (!hebrewPromise) {
+          hebrewPromise = fetchJson("strongs-hebrew.json").then(function (data) {
+            addEntries(Object.keys(data).map(function (k) {
+              var o = data[k] || {};
+              var senses = Array.isArray(o.senses) ? o.senses.join(" ") : (o.senses || "");
+              return {
+                number: o.id || k, language: "Hebrew", lemma: o.lemma || "",
+                translit: o.xlit || "", pron: o.pron || "",
+                definition: o.strongs_def || "", kjv: o.kjv_def || "",
+                senses: senses ? senses : undefined,
+              };
+            }));
+            dict.hebrewLoaded = true;
+          }).then(function () {}, function (e) { hebrewPromise = null; throw e; });
+        }
+        return hebrewPromise;
+      }
+      function loadBothLanguages() {
+        return Promise.all([loadLanguage("Greek"), loadLanguage("Hebrew")]);
+      }
+      function loadForNumber(number) {
+        return loadLanguage(String(number).charAt(0).toUpperCase() === "G" ? "Greek" : "Hebrew");
+      }
+      // Thesaurus and antonyms live in one small file per first letter;
+      // each is fetched the first time a word starting with that letter
+      // is looked up, and kept as a lowercase-keyed map.
+      var wordFileCache = { thesaurus: {}, antonyms: {} };
+      function loadWordFile(kind, letter) {
+        if (!/^[a-z]$/.test(letter)) return Promise.resolve({});
+        if (wordFileCache[kind][letter]) return wordFileCache[kind][letter];
+        var p = fetchJson(kind + "/" + letter + ".json").then(function (data) {
+          var map = {};
+          Object.keys(data).forEach(function (k) {
+            var key = String(k).toLowerCase();
+            if (!map[key]) map[key] = data[k];
+          });
+          return map;
+        }, function () { return {}; });
+        wordFileCache[kind][letter] = p;
+        return p;
+      }
+      // Lewis & Short Latin headword index, in four files. Each file
+      // holds a stretch of the alphabet; the boundaries below are the
+      // last headword of each of the first three files, so a lookup
+      // fetches the one file that holds its headword (the others are
+      // tried, in order, only if the word is not there).
+      var LATIN_BOUNDS = ["experrectus", "omnipollens", "taediosus"];
+      var latinCache = {};
+      function normLatin(text) {
+        return normText(text).replace(/[\s-]+/g, "");
+      }
+      function loadLatinFile(index) {
+        if (latinCache[index]) return latinCache[index];
+        var p = fetchJson("words-latin-0" + (index + 1) + ".json").then(function (data) {
+          var map = {};
+          Object.keys(data).forEach(function (k) {
+            var key = normLatin(k);
+            if (key && !map[key]) {
+              var o = data[k] || {};
+              map[key] = { headword: k, grammar: o.grammar || "", opening: o.opening || "", sourceFile: o.sourceFile || "" };
+            }
+          });
+          return map;
+        });
+        latinCache[index] = p;
+        return p;
+      }
+      function findLatin(query) {
+        var key = normLatin(query);
+        if (!key || /\s/.test(String(query).trim())) return Promise.resolve(null);
+        var start = 0;
+        while (start < LATIN_BOUNDS.length && key > LATIN_BOUNDS[start]) start++;
+        var order = [start, 0, 1, 2, 3].filter(function (v, i, a) { return a.indexOf(v) === i; });
+        var chain = Promise.resolve(null);
+        order.forEach(function (index) {
+          chain = chain.then(function (found) {
+            if (found) return found;
+            return loadLatinFile(index).then(function (map) { return map[key] || null; }, function () { return null; });
+          });
+        });
+        return chain;
+      }
+      // Lowercase, strip accents and pointing so "chêçêd", "chesed" and
+      // "ḥesed" all find the same entry.
+      function normText(text) {
+        return String(text || "").normalize("NFD")
+          .replace(/[̀-ͯՑ-ׇʰ-ʸʼ‘’]/g, "")
+          .toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+      }
+      // Spelling-tolerant key for transliterations.
+      function canonText(text) {
+        return normText(text).replace(/ch/g, "h").replace(/c(?=[ei])/g, "s")
+          .replace(/ph/g, "f").replace(/ow/g, "o").replace(/(.)\1+/g, "$1");
+      }
+      var STOP_WORDS = {};
+      "the and for with from that this which have has are was were will would their there these those than then into unto upon when what whom whose being been also such other more most many much very only over under about against through before after between while where does did had who how why all any can its it in on of to a an is as at by or be so no not"
+        .split(" ").forEach(function (w) { STOP_WORDS[w] = true; });
+      function wordTokens(text) {
+        return (normText(text).match(/[a-z][a-z'-]{2,}/g) || []).filter(function (t) { return !STOP_WORDS[t]; });
+      }
+      function entryByNumber(number) {
+        return dict.byNumber[String(number).trim().toUpperCase()] || null;
+      }
+      function lookupScriptLoaded(q) {
+        for (var i = 0; i < dict.all.length; i++) { if (dict.all[i].lemma === q) return dict.all[i]; }
+        return null;
+      }
+      function lookupTranslitLoaded(q) {
+        var ex = normText(q);
+        if (ex && dict.byTranslitExact[ex]) return dict.byTranslitExact[ex];
+        var key = canonText(q);
+        if (key && dict.byTranslit[key]) return dict.byTranslit[key];
+        return null;
+      }
+      // Finds a dictionary entry for the query, fetching only the
+      // library files the query needs: a Strong's number fetches its
+      // own language, a word in Greek or Hebrew script fetches that
+      // language, and a transliteration is checked against what is
+      // already loaded before fetching Greek, then Hebrew.
+      function findWord(query) {
+        var q = String(query).trim();
+        var numMatch = /^([GH])\s*(\d{1,4})$/i.exec(q);
+        if (numMatch) {
+          var prefix = (numMatch[1] || "G").toUpperCase();
+          return loadLanguage(prefix === "G" ? "Greek" : "Hebrew").then(function () {
+            return entryByNumber(prefix + Number(numMatch[2]));
+          });
+        }
+        var hasGreek = /[\u0370-\u03FF\u1F00-\u1FFF]/.test(q);
+        var hasHebrew = /[\u0590-\u05FF]/.test(q);
+        if (hasGreek || hasHebrew) {
+          var loads = [];
+          if (hasGreek) loads.push(loadLanguage("Greek"));
+          if (hasHebrew) loads.push(loadLanguage("Hebrew"));
+          return Promise.all(loads).then(function () { return lookupScriptLoaded(q); });
+        }
+        var found = lookupTranslitLoaded(q);
+        if (found) return Promise.resolve(found);
+        var order = [];
+        if (!dict.greekLoaded) order.push("Greek");
+        if (!dict.hebrewLoaded) order.push("Hebrew");
+        var chain = Promise.resolve(null);
+        order.forEach(function (language) {
+          chain = chain.then(function (prev) {
+            if (prev) return prev;
+            return loadLanguage(language).then(function () { return lookupTranslitLoaded(q); });
+          });
+        });
+        return chain;
+      }
+      function buildEnglishIndex() {
+        var map = {};
+        function add(word, entry) {
+          var list = map[word];
+          if (list) { if (list.indexOf(entry) < 0) list.push(entry); } else map[word] = [entry];
+        }
+        dict.all.forEach(function (e) {
+          var seen = {};
+          wordTokens(e.kjv).forEach(function (w) { if (!seen[w]) { seen[w] = 1; add(w, e); } });
+          seen = {};
+          wordTokens(e.definition).forEach(function (w) { if (!seen[w]) { seen[w] = 1; add(w, e); } });
+          if (e.senses) { seen = {}; wordTokens(e.senses).forEach(function (w) { if (!seen[w]) { seen[w] = 1; add(w, e); } }); }
+        });
+        return map;
+      }
+      function searchEnglish(query, limit) {
+        if (!dict.englishIndex) dict.englishIndex = buildEnglishIndex();
+        var words = [], seenW = {};
+        wordTokens(query).forEach(function (w) { if (!seenW[w]) { seenW[w] = 1; words.push(w); } });
+        if (words.length === 0) return [];
+        var scores = new Map();
+        words.forEach(function (w) {
+          (dict.englishIndex[w] || []).forEach(function (e) {
+            var score = scores.get(e) || 0;
+            if (wordTokens(e.kjv).indexOf(w) >= 0) score += 3;
+            if (wordTokens(e.definition).indexOf(w) >= 0) score += 1;
+            scores.set(e, score + 1);
+          });
+        });
+        return Array.from(scores.entries()).sort(function (a, b) { return b[1] - a[1]; })
+          .slice(0, limit || 8).map(function (pair) { return pair[0]; });
+      }
+      function kjvRenderings(entry) {
+        var segments = [], depth = 0, current = "";
+        for (var i = 0; i < entry.kjv.length; i++) {
+          var ch = entry.kjv[i];
+          if (ch === "(") depth++;
+          if (ch === ")") depth = Math.max(0, depth - 1);
+          if (ch === "," && depth === 0) { segments.push(current); current = ""; } else current += ch;
+        }
+        segments.push(current);
+        var out = [];
+        segments.forEach(function (segment) {
+          var cleaned = segment.replace(/\([^)]*\)/g, " ").replace(/\[[^\]]*\]/g, " ").trim()
+            .replace(/^[×xX+]\s*/, "").replace(/\./g, "").replace(/\s+/g, " ").trim().toLowerCase();
+          if (cleaned.length >= 3 && cleaned.charAt(0) !== "-" && out.indexOf(cleaned) < 0) out.push(cleaned);
+        });
+        return out.slice(0, 12);
+      }
+      function siblingRenderings(entries, excludeWord, limit) {
+        var exclude = normText(excludeWord);
+        var counts = {};
+        entries.forEach(function (e) {
+          kjvRenderings(e).forEach(function (r) {
+            if (normText(r) === exclude) return;
+            counts[r] = (counts[r] || 0) + 1;
+          });
+        });
+        return Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a]; }).slice(0, limit || 16);
+      }
+      function matchTopic(query) {
+        var words = {};
+        wordTokens(query).forEach(function (w) { words[w] = true; });
+        var q = normText(query);
+        var best = null;
+        STUDY_TOPICS.forEach(function (topic) {
+          var score = 0;
+          topic.keywords.forEach(function (kw) { if (words[kw] || q.indexOf(kw) >= 0) score += 2; });
+          wordTokens(topic.title).forEach(function (w) { if (words[w]) score += 1; });
+          if (score > 0 && (!best || score > best.score)) best = { topic: topic, score: score };
+        });
+        return best ? best.topic : null;
+      }
+      function matchCharacter(query) {
+        var q = normText(query);
+        if (!q) return null;
+        for (var i = 0; i < BIBLE_CHARACTERS.length; i++) {
+          var c = BIBLE_CHARACTERS[i];
+          var name = normText(c.name);
+          if (q === name || q === name.replace(/^king /, "") || q.indexOf(name) >= 0) return c;
+        }
+        // "solomon" alone should reach King Solomon.
+        if (q === "solomon") return BIBLE_CHARACTERS.filter(function (c) { return c.name === "King Solomon"; })[0] || null;
+        return null;
+      }
+      function strongsLinks(number) {
+        var m = /^([GH])(\d{1,4})$/i.exec(String(number).trim());
+        if (!m) return null;
+        var prefix = (m[1] || "G").toUpperCase();
+        var num = Number(m[2]);
+        var language = prefix === "G" ? "greek" : "hebrew";
+        return { bibleHub: bibleHubStrongsUrl(language, num), blueLetter: blueLetterStrongsUrl(language, num) };
+      }
+      function lookupAll(query) {
+        return findWord(query).then(function (word) {
+          if (word) return { kind: "word", entry: word };
+          var character = matchCharacter(query);
+          var topic = matchTopic(query);
+          var key = normText(query);
+          return Promise.all([
+            loadBothLanguages(),
+            loadWordFile("thesaurus", key.charAt(0)),
+            loadWordFile("antonyms", key.charAt(0)),
+          ]).then(function (res) {
+            var entries = searchEnglish(query);
+            var synonyms = res[1][key] || null;
+            var antonyms = res[2][key] || null;
+            if (topic && entries.length === 0) {
+              return Promise.all(topic.strongsNumbers.map(loadForNumber)).then(function () {
+                return { kind: "topic", topic: topic, character: character };
+              });
+            }
+            if (entries.length > 0) {
+              var counts = null;
+              var toks = wordTokens(query);
+              if (toks.length === 1 && dict.englishIndex) {
+                var list = (dict.englishIndex[toks[0]] || []).filter(function (e) {
+                  return wordTokens(e.kjv).indexOf(toks[0]) >= 0;
+                });
+                counts = {
+                  word: toks[0], total: list.length,
+                  greek: list.filter(function (e) { return e.language === "Greek"; }).length,
+                  hebrew: list.filter(function (e) { return e.language === "Hebrew"; }).length,
+                };
+              }
+              return {
+                kind: "english", query: query, entries: entries, synonyms: synonyms,
+                antonyms: antonyms, alternatives: siblingRenderings(entries, query),
+                counts: counts, character: character,
+              };
+            }
+            if (synonyms || antonyms) {
+              return {
+                kind: "english", query: query, entries: [], synonyms: synonyms,
+                antonyms: antonyms, alternatives: [], counts: null, character: character,
+              };
+            }
+            return findLatin(query).then(function (latin) {
+              if (latin) return { kind: "latin", headword: latin.headword, grammar: latin.grammar, opening: latin.opening, sourceFile: latin.sourceFile };
+              if (character) return { kind: "character", character: character };
+              return { kind: "none", query: query };
+            });
+          });
+        });
+      }
+
+      /* ---- composing a saved study note (plain text) from a result ---- */
+      function termLine(e) {
+        return e.lemma + " (" + e.translit + "), Strong's " + e.language + " " + e.number + " — " + e.definition +
+          (e.kjv ? " In the King James it is rendered: " + e.kjv : "");
+      }
+      function noteTextForResult(result, query) {
+        var lines = [];
+        if (result.kind === "word") {
+          var e = result.entry;
+          lines.push(e.lemma + " (" + e.translit + "), pronounced " + e.pron + " — Strong's " + e.language + " " + e.number + ".");
+          lines.push("Strong's definition: " + e.definition);
+          if (e.kjv) lines.push("In the King James it is rendered: " + e.kjv);
+          if (e.senses) lines.push("Senses: " + e.senses);
+          var links = strongsLinks(e.number);
+          lines.push("", "Sources:");
+          if (links) {
+            lines.push("BibleHub — Strong's " + e.number + ": " + links.bibleHub);
+            lines.push("Blue Letter Bible — Strong's " + e.number + ": " + links.blueLetter);
+          }
+          lines.push("The dictionaries in the Chaplain Repository Archive: " + REPO_DICTIONARIES_URL);
+        } else if (result.kind === "topic") {
+          var t = result.topic;
+          lines.push(t.summary, "", "Cross-references:");
+          t.references.forEach(function (r) { lines.push(r.reference + " — " + r.note); });
+          var words = t.strongsNumbers.map(entryByNumber).filter(Boolean);
+          if (words.length > 0) {
+            lines.push("", "The key words:");
+            words.forEach(function (w) { lines.push(termLine(w)); });
+          }
+          lines.push("", "Sources:", "Assistant index — Chaplain Repository Archive: " + REPO_INDEX_URL);
+        } else if (result.kind === "english") {
+          if (result.synonyms) lines.push('Words that keep company with "' + result.query + '" (Moby Thesaurus II): ' + result.synonyms.join(", ") + ".");
+          if (result.antonyms) lines.push('Opposite words for "' + result.query + '" (WordNet 3.0): ' + result.antonyms.join(", ") + ".");
+          if (result.alternatives.length > 0) lines.push("Other renderings of the same original words, to choose from: " + result.alternatives.join(", ") + ".");
+          if (result.counts) lines.push('The King James renders ' + result.counts.total + " original word" + (result.counts.total === 1 ? "" : "s") + ' with "' + result.counts.word + '" (' + result.counts.greek + " Greek, " + result.counts.hebrew + " Hebrew).");
+          if (result.entries.length > 0) {
+            lines.push('In the dictionaries, "' + result.query + '" belongs to these words:');
+            result.entries.slice(0, 6).forEach(function (en) { lines.push(termLine(en)); });
+          }
+          lines.push("", "Sources:", "The dictionaries in the Chaplain Repository Archive: " + REPO_DICTIONARIES_URL);
+          if (result.synonyms) lines.push("Moby Thesaurus II in the Chaplain Repository Archive: " + REPO_THESAURUS_URL);
+          if (result.antonyms) lines.push("WordNet antonyms in the Chaplain Repository Archive: " + REPO_ANTONYMS_URL);
+        } else if (result.kind === "latin") {
+          lines.push(result.headword + (result.grammar ? " — " + result.grammar : "") + " (Lewis & Short Latin Dictionary).");
+          if (result.opening) lines.push(result.opening);
+          lines.push("", "Sources:");
+          if (result.sourceFile) lines.push("Full entry in the Chaplain Repository Archive: " + REPO_URL + "/blob/main/" + result.sourceFile);
+          lines.push("The dictionaries in the Chaplain Repository Archive: " + REPO_DICTIONARIES_URL);
+        } else if (result.kind === "character") {
+          var c = result.character;
+          lines.push(c.name + " — " + c.title, "", c.summary, "", "Key scriptures:");
+          c.keyScriptures.forEach(function (s) { lines.push(s.reference + " — " + s.note); });
+          lines.push("", "Themes: " + c.themes.join(", "));
+          lines.push("", "From the Characters page of this CMS.");
+        }
+        return lines.join("\n");
+      }
+
+      var EXAMPLE_LOOKUPS = ["hesed", "logos", "G3056", "comfort", "shalom", "kindness"];
+      function chipsHtml(words, label) {
+        return '<div class="row" style="margin-top: 0.5rem">' + words.map(function (w) {
+          return '<button type="button" class="chip" data-st-lookup="' + esc(w) + '" aria-label="' + esc(label + " " + w) + '">' + esc(w) + "</button>";
+        }).join("") + "</div>";
+      }
+      function renderStudy() {
+        var content = $("#content");
+        var ui = renderStudy._ui || {};
+        return dbList("chaplain_study_notes", "created_at", false).then(function (savedRows) {
+          var saved = savedRows.slice(0, 30);
+          var result = ui.result || null;
+          var html = '<div class="stack-lg">' +
+            '<div><h2 class="section-title">Study — the Library Assistant</h2>' +
+            '<p class="blurb">This assistant is a library, not a mind. It looks your word or question up in the dictionaries, the thesaurus, and the cross-reference topics wired into it from the Chaplain Repository Archive, and shows you exactly what it finds — the real entries, word for word, with the way out to the full sources. Nothing is written up for you and nothing is invented, and its library files load from beside this page when the page is hosted.</p>' +
+            '<p class="blurb" style="margin-top: 0.5rem">And when a word doesn&rsquo;t sit right, type it in and ask for a more fitting one: the assistant lays out the broader spectrum — the synonyms and related words the thesaurus keeps for it, its opposite words, and the other renderings the dictionaries give for the same word of Scripture — so you can choose the word that carries what you mean.</p></div>' +
+            '<form class="card form-stack" data-st-form>' +
+            '<label class="field"><span>A word, a Strong&rsquo;s number, or a topic</span>' +
+            '<input class="input" data-st-query value="' + esc(ui.query || "") + '" placeholder="e.g. hesed, G3056, shalom — or a topic like comfort" /></label>' +
+            '<div class="row"><button type="submit" class="btn-primary">Look it up</button>' +
+            EXAMPLE_LOOKUPS.map(function (ex) {
+              return '<button type="button" class="chip" data-st-lookup="' + ex + '">' + ex + "</button>";
+            }).join("") + "</div>" +
+            (ui.saveError ? '<p class="error-note" role="alert">Something went wrong saving that. Please try again.</p>' : "") +
+            "</form>" +
+            (ui.loading ? '<p class="blurb" role="status">Opening the library\u2026</p>' : "") +
+            (ui.libraryError ? '<p class="blurb" role="note">The library files load when this page is hosted \u2014 they sit beside the page on the movement\u2019s site, so in this preview the dictionaries cannot be opened. The rest of the CMS works as usual.</p>' : "");
+
+          if (result && result.kind === "word") {
+            var e = result.entry;
+            var links = strongsLinks(e.number);
+            var renderings = kjvRenderings(e);
+            html += '<article class="card"><div class="row" style="align-items: baseline; column-gap: 0.75rem">' +
+              '<h3 style="margin:0;font-family:var(--font-display);font-size:1.875rem;font-weight:600">' + esc(e.lemma) + "</h3>" +
+              '<span>' + esc(e.translit) + '</span><span style="font-size:0.875rem;color:var(--dim)">pronounced ' + esc(e.pron) + "</span>" +
+              '<span class="badge badge-draft" style="color: var(--brass)">Strong&rsquo;s ' + e.language + " " + e.number + "</span></div>" +
+              '<p style="margin: 0.75rem 0 0; line-height: 1.6">' + esc(e.definition) + "</p>" +
+              (renderings.length > 0
+                ? '<div style="margin-top: 0.75rem"><p style="margin:0;font-size:0.875rem;font-weight:600">The King James renders this one word as:</p>' +
+                  chipsHtml(renderings, "Look up the word") +
+                  '<p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--dim)">Tap any of them to see its own company of words — handy when one rendering sits better than another.</p></div>'
+                : "") +
+              (e.senses ? '<p style="margin: 0.5rem 0 0; font-size: 0.875rem; line-height: 1.6; color: var(--dim)">' + esc(e.senses) + "</p>" : "") +
+              (links ? '<p class="row" style="margin-top: 0.75rem; column-gap: 1.25rem; font-size: 0.875rem">' +
+                '<a class="ext-link" href="' + links.bibleHub + '" target="_blank" rel="noreferrer">Full entry in BibleHub ↗</a>' +
+                '<a class="ext-link" href="' + links.blueLetter + '" target="_blank" rel="noreferrer">Full entry in Blue Letter Bible ↗</a></p>' : "") +
+              '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-st-save ' + (ui.savedFlag ? "disabled" : "") + ">" +
+              (ui.savedFlag ? "Saved to your study notes" : "Save to my study notes") + "</button></div></article>";
+          }
+
+          if (result && result.kind === "topic") {
+            var t = result.topic;
+            var words = t.strongsNumbers.map(entryByNumber).filter(Boolean);
+            html += '<article class="card"><h3 style="margin:0;font-family:var(--font-display);font-size:1.5rem;font-weight:600">' + esc(t.title) + "</h3>" +
+              '<p style="margin: 0.5rem 0 0; line-height: 1.6">' + esc(t.summary) + "</p>" +
+              '<h4 class="kicker-sm" style="margin-top: 1rem">Cross-references</h4>' +
+              '<ul style="margin: 0.375rem 0 0; padding: 0; list-style: none">' + t.references.map(function (r) {
+                return '<li style="margin-top: 0.25rem; font-size: 0.875rem"><span style="font-weight:600">' + esc(r.reference) + '</span><span style="color: var(--dim)"> — ' + esc(r.note) + "</span></li>";
+              }).join("") + "</ul>" +
+              (words.length > 0
+                ? '<h4 class="kicker-sm" style="margin-top: 1rem">The key words</h4><div class="row" style="margin-top: 0.5rem">' +
+                  words.map(function (w) {
+                    return '<button type="button" class="chip" data-st-openword="' + w.number + '">' + esc(w.translit) + " · " + w.number + "</button>";
+                  }).join("") + "</div>"
+                : "") +
+              '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-st-save ' + (ui.savedFlag ? "disabled" : "") + ">" +
+              (ui.savedFlag ? "Saved to your study notes" : "Save to my study notes") + "</button></div></article>";
+          }
+
+          if (result && result.kind === "english") {
+            html += '<article class="card"><h3 style="margin:0;font-family:var(--font-display);font-size:1.5rem;font-weight:600">&ldquo;' + esc(result.query) + "&rdquo;</h3>";
+            if (result.counts) {
+              html += '<p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--dim)">In the dictionaries, the King James renders ' +
+                result.counts.total + " original word" + (result.counts.total === 1 ? "" : "s") + ' with &ldquo;' + esc(result.counts.word) + "&rdquo; — " +
+                result.counts.greek + " Greek and " + result.counts.hebrew + " Hebrew.</p>";
+            }
+            if (result.character) {
+              var rc = result.character;
+              html += '<div style="margin-top: 0.75rem"><h4 class="kicker-sm">The name in Scripture</h4>' +
+                '<p style="margin: 0.375rem 0 0; line-height: 1.6"><strong>' + esc(rc.name) + "</strong> — " + esc(rc.title) + ". " + esc(rc.summary) + "</p>" +
+                '<p style="margin: 0.375rem 0 0; font-size: 0.875rem; color: var(--dim)">The full profile, with its key scriptures, is on the Characters page.</p></div>';
+            }
+            if (result.synonyms) {
+              html += '<div style="margin-top: 0.75rem"><h4 class="kicker-sm">More fitting words — its company in the thesaurus</h4>' +
+                chipsHtml(result.synonyms, "Look up the word") +
+                '<p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--dim)">Synonyms and related words from Moby Thesaurus II, in the Archive — tap one to see its own company, and keep going until the word fits.</p></div>';
+            }
+            if (result.antonyms) {
+              html += '<div style="margin-top: 1rem"><h4 class="kicker-sm">Opposite words</h4>' +
+                chipsHtml(result.antonyms, "Look up the word") +
+                '<p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--dim)">Antonyms from Princeton WordNet 3.0, kept in the Archive beside the thesaurus — for when the word you need is the turn-around of the one you have.</p></div>';
+            }
+            if (result.alternatives.length > 0) {
+              html += '<div style="margin-top: 1rem"><h4 class="kicker-sm">Other renderings of the same original words</h4>' +
+                chipsHtml(result.alternatives, "Look up the word") +
+                '<p style="margin: 0.375rem 0 0; font-size: 0.75rem; color: var(--dim)">The same Greek and Hebrew words, rendered other ways in the King James — the broader spectrum of how Scripture itself uses them.</p></div>';
+            }
+            if (result.entries.length > 0) {
+              html += '<div style="margin-top: 1rem"><h4 class="kicker-sm">In the dictionaries</h4><ul class="stack" style="margin: 0.5rem 0 0; padding: 0; list-style: none">' +
+                result.entries.map(function (en) {
+                  return '<li><button type="button" class="card" style="width:100%;text-align:left;padding:0.5rem 0.75rem;cursor:pointer" data-st-openword="' + en.number + '">' +
+                    '<span style="font-weight:600">' + esc(en.lemma) + " · " + esc(en.translit) + '</span> <span style="font-size:0.75rem;color:var(--brass)">Strong&rsquo;s ' + en.number + "</span>" +
+                    '<span style="display:block;margin-top:0.125rem;font-size:0.875rem;color:var(--dim)">' + esc(en.definition) + "</span></button></li>";
+                }).join("") + "</ul></div>";
+            }
+            html += '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-st-save ' + (ui.savedFlag ? "disabled" : "") + ">" +
+              (ui.savedFlag ? "Saved to your study notes" : "Save to my study notes") + "</button></div></article>";
+          }
+
+          if (result && result.kind === "latin") {
+            html += '<article class="card"><div class="row" style="align-items: baseline; column-gap: 0.75rem">' +
+              '<h3 style="margin:0;font-family:var(--font-display);font-size:1.875rem;font-weight:600">' + esc(result.headword) + "</h3>" +
+              (result.grammar ? '<span>' + esc(result.grammar) + "</span>" : "") +
+              '<span class="badge badge-draft" style="color: var(--brass)">Lewis &amp; Short — Latin</span></div>' +
+              (result.opening ? '<p style="margin: 0.75rem 0 0; line-height: 1.6">' + esc(result.opening) + "</p>" : "") +
+              (result.sourceFile ? '<p class="row" style="margin-top: 0.75rem; column-gap: 1.25rem; font-size: 0.875rem">' +
+                '<a class="ext-link" href="' + REPO_URL + "/blob/main/" + esc(result.sourceFile) + '" target="_blank" rel="noreferrer">Full entry in the Chaplain Repository Archive ↗</a></p>' : "") +
+              '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-st-save ' + (ui.savedFlag ? "disabled" : "") + ">" +
+              (ui.savedFlag ? "Saved to your study notes" : "Save to my study notes") + "</button></div></article>";
+          }
+
+          if (result && result.kind === "character") {
+            var c = result.character;
+            html += '<article class="card"><h3 style="margin:0;font-family:var(--font-display);font-size:1.5rem;font-weight:600">' + esc(c.name) + "</h3>" +
+              '<p class="kicker-sm" style="margin-top: 0.125rem">' + esc(c.title) + "</p>" +
+              '<p style="margin: 0.75rem 0 0; line-height: 1.6">' + esc(c.summary) + "</p>" +
+              '<h4 style="margin: 1rem 0 0; font-size: 0.875rem; font-weight: 600">Key scriptures</h4>' +
+              '<ul style="margin: 0.375rem 0 0; padding: 0; list-style: none">' + c.keyScriptures.map(function (s) {
+                return '<li style="margin-top: 0.375rem; font-size: 0.875rem"><span style="font-weight:600;color:var(--accent)">' + esc(s.reference) + '</span> <span style="color: var(--dim)">— ' + esc(s.note) + "</span></li>";
+              }).join("") + "</ul>" +
+              '<p style="margin: 0.75rem 0 0; font-size: 0.875rem; color: var(--dim)">The full profile is on the Characters page.</p>' +
+              '<div style="margin-top: 1rem"><button type="button" class="btn-small" data-st-save ' + (ui.savedFlag ? "disabled" : "") + ">" +
+              (ui.savedFlag ? "Saved to your study notes" : "Save to my study notes") + "</button></div></article>";
+          }
+
+          if (result && result.kind === "none") {
+            html += emptyState("Nothing in the dictionaries or topics matches &ldquo;" + esc(result.query) + "&rdquo; yet. Try the word as the King James spells it, a transliteration like <em>hesed</em> or <em>logos</em>, a Strong&rsquo;s number like G3056 — or browse the topics below. The full dictionaries themselves live in the <a class=\"ext-link\" href=\"" + REPO_URL + "\" target=\"_blank\" rel=\"noreferrer\">Chaplain Repository Archive ↗</a>.");
+          }
+
+          html += '<section aria-label="Cross-reference topics"><h3 class="kicker" style="color: var(--dim); font-size: 0.875rem">Cross-reference topics</h3>' +
+            '<div class="row" style="margin-top: 0.5rem">' + STUDY_TOPICS.map(function (t, i) {
+              return '<button type="button" class="btn-ghost" data-st-topic="' + i + '">' + esc(t.title) + "</button>";
+            }).join("") + "</div></section>";
+
+          html += '<section aria-label="Saved study answers"><h3 class="kicker" style="color: var(--dim); font-size: 0.875rem">Saved study notes</h3>';
+          if (saved.length === 0) {
+            html += '<div style="margin-top: 0.75rem">' + emptyState("Nothing saved yet. Look a word or topic up above and save it, and it will be kept here for your preparation.") + "</div>";
+          } else {
+            html += '<div class="stack" style="margin-top: 0.75rem">' + saved.map(studyNoteCardHtml).join("") + "</div>";
+          }
+          html += "</section>";
+
+          html += '<section class="sources-box" aria-label="What the assistant draws on"><h3 class="kicker-sm">What the assistant draws on</h3><ul>' +
+            "<li>Strong&rsquo;s Greek Dictionary — all 5,624 entries, loaded from the library files beside this page when a Greek word is looked up.</li>" +
+            "<li>Strong&rsquo;s Hebrew Dictionary — all 8,674 entries, loaded the same way when a Hebrew word is looked up.</li>" +
+            "<li>Moby Thesaurus II — 8,072 English words in the library files beside this page, each letter loaded when a word starting with it is looked up; the full thesaurus, 30,259 words, lives in the Archive.</li>" +
+            "<li>Princeton WordNet 3.0 antonyms — opposite words for 1,231 of those words in the same letter files; the full set, 6,641 words, lives in the Archive.</li>" +
+            "<li>Lewis &amp; Short Latin Dictionary — a headword index of all 51,645 entries in the library files beside this page, pointing to the full entries in the Archive.</li>" +
+            "<li>" + STUDY_TOPICS.length + " built-in cross-reference topics, every passage checkable in the sources.</li></ul>" +
+            '<p style="margin: 0.75rem 0 0; font-size: 0.875rem"><a class="ext-link" href="' + REPO_URL + '" target="_blank" rel="noreferrer">The Chaplain Repository Archive ↗</a> ' +
+            '<span style="color: var(--dim)">— the library behind this assistant; </span>' +
+            '<a class="ext-link" href="' + REPO_INDEX_URL + '" target="_blank" rel="noreferrer">how it is wired ↗</a></p></section>';
+
+          html += "</div>";
+          content.innerHTML = html;
+
+          function rerender(next) {
+            renderStudy._ui = Object.assign({}, ui, next);
+            renderStudy();
+          }
+          function runLookup(q) {
+            q = String(q || "").trim();
+            if (q.length < 2) return;
+            rerender({ query: q, result: null, resultQuery: q, savedFlag: false, saveError: false, loading: true, libraryError: false });
+            lookupAll(q).then(function (result) {
+              rerender({ query: q, result: result, resultQuery: q, savedFlag: false, saveError: false, loading: false, libraryError: false });
+            }).catch(function () {
+              rerender({ query: q, result: null, resultQuery: q, savedFlag: false, saveError: false, loading: false, libraryError: true });
+            });
+          }
+          var form = $("[data-st-form]", content);
+          if (form) form.addEventListener("submit", function (e) {
+            e.preventDefault();
+            runLookup($("[data-st-query]", form).value);
+          });
+          $$("[data-st-lookup]", content).forEach(function (b) {
+            b.addEventListener("click", function () { runLookup(b.getAttribute("data-st-lookup")); });
+          });
+          $$("[data-st-openword]", content).forEach(function (b) {
+            b.addEventListener("click", function () {
+              var entry = entryByNumber(b.getAttribute("data-st-openword"));
+              if (entry) rerender({ query: entry.translit + " (" + entry.lemma + ")", result: { kind: "word", entry: entry }, resultQuery: entry.translit + " (" + entry.lemma + ")", savedFlag: false, saveError: false });
+            });
+          });
+          $$("[data-st-topic]", content).forEach(function (b) {
+            b.addEventListener("click", function () {
+              var topic = STUDY_TOPICS[Number(b.getAttribute("data-st-topic"))];
+              if (!topic) return;
+              // The topic's key words come from the dictionaries — fetch
+              // the files for its Strong's numbers first, then show it.
+              Promise.all(topic.strongsNumbers.map(loadForNumber)).then(function () {
+                rerender({ query: topic.title, result: { kind: "topic", topic: topic }, resultQuery: topic.title, savedFlag: false, saveError: false, loading: false, libraryError: false });
+              }).catch(function () {
+                rerender({ query: topic.title, result: null, resultQuery: topic.title, savedFlag: false, saveError: false, loading: false, libraryError: true });
+              });
+            });
+          });
+          var saveBtn = $("[data-st-save]", content);
+          if (saveBtn && result) saveBtn.addEventListener("click", function () {
+            saveBtn.disabled = true;
+            var text = noteTextForResult(result, ui.resultQuery || ui.query || "");
+            var question = result.kind === "topic" ? result.topic.title
+              : result.kind === "character" ? result.character.name
+              : result.kind === "latin" ? result.headword
+              : (ui.resultQuery || ui.query || "");
+            dbInsert("chaplain_study_notes", { query: question, result: text })
+              .then(function () { rerender({ savedFlag: true, saveError: false }); })
+              .catch(function () { rerender({ saveError: true }); });
+          });
+          wireStudyNoteDeletes(content, function () { renderStudy(); });
+        }).catch(function () {
+          content.innerHTML = '<p class="error-note" role="alert">Your saved study notes could not be loaded. Check your connection and try the Study tab again.</p>';
+        });
+      }
+      renderStudy._ui = {};
+
+      /* ---------------- boot ---------------- */
+      document.addEventListener("DOMContentLoaded", initGate);
+    </script>
+  </body>
+</html>
