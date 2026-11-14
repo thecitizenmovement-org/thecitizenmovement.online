@@ -1,0 +1,77 @@
+{
+  "name": "Library Assistant index",
+  "purpose": "The wiring between the Chaplain Repository Archive and the static Library Assistant in Eric's CMS. The assistant answers only from the sources indexed here — the dictionaries, thesaurus, and antonyms in this repository — and from the built-in cross-reference topics. It generates nothing.",
+  "generated": "2026-11-13",
+  "sources": [
+    {
+      "name": "Strong's Greek Dictionary",
+      "path": "dictionaries/greek/strongs-greek.json",
+      "entries": 5624,
+      "license": "Public domain (Strong, 1890; Open Scriptures conversion, CC BY-SA attribution)",
+      "assistantIndex": "dictionaries/index/words-greek.json",
+      "fields": [
+        "lemma",
+        "translit",
+        "pron",
+        "definition",
+        "kjv"
+      ]
+    },
+    {
+      "name": "Strong's Hebrew Dictionary",
+      "path": "dictionaries/hebrew/strongs-hebrew.json",
+      "entries": 8674,
+      "license": "Public domain (Strong, 1894)",
+      "assistantIndex": "dictionaries/index/words-hebrew.json",
+      "fields": [
+        "lemma",
+        "translit",
+        "pron",
+        "definition",
+        "kjv",
+        "senses"
+      ]
+    },
+    {
+      "name": "Lewis & Short Latin Dictionary",
+      "path": "dictionaries/latin/",
+      "entries": 51645,
+      "license": "Public domain (Lewis & Short, 1879)",
+      "assistantIndex": "dictionaries/index/words-latin-*.json (4 files)",
+      "fields": [
+        "headword",
+        "grammar",
+        "opening gloss",
+        "sourceFile"
+      ],
+      "note": "Headword index; the full entry text stays in the per-letter dictionary files it points to."
+    },
+    {
+      "name": "Moby Thesaurus II",
+      "path": "thesaurus/",
+      "entries": 30259,
+      "license": "Public domain (Grady Ward; Project Gutenberg #3202)",
+      "assistantIndex": "bundled in the CMS for the English words the dictionaries use",
+      "bundledWords": 4422,
+      "note": "So the assistant can find the right word, and follow the words Eric uses. Synonyms and related words only; opposites live in the WordNet antonyms."
+    },
+    {
+      "name": "WordNet 3.0 Antonyms",
+      "path": "antonyms/",
+      "entries": 6641,
+      "license": "Princeton WordNet 3.0 license (permissive, with attribution; full text in antonyms/README.md)",
+      "assistantIndex": "bundled in the CMS for the words the bundled thesaurus covers",
+      "bundledWords": 1004,
+      "note": "Opposite words (7,126 pairs, symmetric), so a word Eric rejects can be turned around entirely, not just rephrased."
+    }
+  ],
+  "assistant": {
+    "location": "The Study tab of the chaplain's CMS (static — no generative AI)",
+    "answersFrom": [
+      "Word lookups by Strong’s number (G#### / H####), by transliteration (spelling-tolerant: hesed and chesed both find H2617), by the word in Greek or Hebrew script, and by English rendering",
+      "Word choice: when a word does not sit right, the assistant offers more fitting words — synonyms and related words from the thesaurus (Moby), opposite words from the WordNet antonyms, and the other renderings the dictionaries give for the same original word (the King James spectrum for that word)",
+      "Cross-reference topics built into the CMS, each reference checkable in the sources",
+      "Every answer links out to the full entries (BibleHub, Blue Letter Bible) and to this repository"
+    ]
+  }
+}
