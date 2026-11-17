@@ -302,7 +302,7 @@
     </div>
     <div class="mast-meta">
       <div class="badges">
-        <span class="badge draft">Draft Only</span>
+        <span class="badge draft">Publishes</span>
         <span class="badge class">Private</span>
         <span class="badge">Built Nov 17, 2026</span>
       </div>
@@ -324,7 +324,7 @@
     </nav>
     <div class="side-note">
       <strong>Authorization state</strong>
-      Draft only. Nothing in this console publishes by itself. Publishing, repository changes, account changes, spending, and external contacts are <em>not</em> authorized from this page.
+      You publish your own ShastaWars drafts from here, with the Publish button. Repository changes happen only through that button, on a draft you wrote. Account changes, spending, and external contacts are <em>not</em> authorized from this page.
     </div>
     <div class="side-note">
       <strong>Counts rule</strong>
@@ -347,7 +347,7 @@
       <div class="grid tiles" style="margin-bottom:1rem">
         <div class="tile accent"><div class="t-label">Drafts saved</div><div class="t-num" id="tile-drafts">0</div><div class="t-note">Saved on this device only</div></div>
         <div class="tile accent"><div class="t-label">Ready to publish</div><div class="t-num" id="tile-ready">0</div><div class="t-note">Marked ready by you</div></div>
-        <div class="tile"><div class="t-label">Published from this console</div><div class="t-num">0</div><div class="t-note">Nothing published yet</div></div>
+        <div class="tile"><div class="t-label">Published from this console</div><div class="t-num" id="tile-published">0</div><div class="t-note">Saved as records in the repo</div></div>
       </div>
 
       <div class="panel">
@@ -390,7 +390,7 @@
             <dt>DNS cutover</dt><dd>Pending. Do not change any DNS record — Josh has the correct records.</dd>
             <dt>GitHub Pages copy</dt><dd>Not published. A staged copy exists in the private repo, but the live site is still WordPress.</dd>
             <dt>This console</dt><dd>Built Nov 17, 2026. Live since Nov 17, 2026 — pushed the same day (commit 296d3ae).</dd>
-            <dt>Publish wiring</dt><dd>Not built yet. Drafts save on this device only until the wiring is live.</dd>
+            <dt>Publish wiring</dt><dd>Wired up. Publishing sends your draft as a record to the repo. Your live site is still WordPress until the DNS cutover, which is not rushed.</dd>
           </dl>
         </div>
         <div class="panel">
@@ -458,7 +458,7 @@
 
       <div class="panel">
         <h3>Write a draft</h3>
-        <p class="p-sub">A draft is only a draft. It saves on this device and goes nowhere until you publish it — and the publish step is being wired up right now, so your drafts save here until it&rsquo;s ready.</p>
+        <p class="p-sub">A draft is only a draft. It saves on this device and goes nowhere until you publish it. Publishing sends it to the repo as a record — it does not change the live WordPress site by itself.</p>
         <div class="editor">
           <label for="draft-title">Draft title — what is this change about?</label>
           <input class="field" id="draft-title" type="text" placeholder="Example: Fix the words on Panel 5" />
@@ -489,7 +489,7 @@
 
       <div class="callout">
         <strong>Honest statuses</strong>
-        <p>A draft is a draft until you publish it. &ldquo;Ready to publish&rdquo; means you marked it ready — it still is not live, and it still is not sent anywhere until the wiring is built. Your Muse is your safeguard: it checks your work and keeps you secure while you do what you need to do.</p>
+        <p>A draft is a draft until you publish it. &ldquo;Ready to publish&rdquo; means you marked it ready — it still is not live. Press Publish and it goes to the repo as a record. It does not change the live WordPress site by itself. Your Muse is your safeguard: it checks your work and keeps you secure while you do what you need to do.</p>
       </div>
 
       <div class="panel">
@@ -502,6 +502,7 @@
           </table>
         </div>
         <div class="empty" id="drafts-empty"><strong>No drafts yet</strong>Write your first draft in the Editing Desk. It will show up here.</div>
+        <p class="p-sub" id="publish-note" style="margin-top:.7rem"></p>
       </div>
     </section>
 
@@ -510,7 +511,14 @@
 
       <div class="view-head"><h2>Published</h2><span class="sub">What has gone live from this console</span></div>
 
-      <div class="empty"><strong>Nothing published from this console yet</strong>Your live site is still WordPress, and it stays that way until the publisher wiring is proven. When it&rsquo;s ready, you publish from here yourself. When something does go live from here, it will be listed on this page with the date and the exact change.</div>
+      <div class="empty" id="published-empty"><strong>Nothing published from this console yet</strong>Your live site is still WordPress, and it stays that way until the DNS cutover. When you publish a draft from here, it is saved as a record in the repo, and it will be listed on this page with the date and the exact change.</div>
+      <div class="tbl-wrap" id="published-wrap" style="display:none">
+        <table>
+          <thead><tr><th>Title</th><th>Where</th><th>Published</th><th>Record</th></tr></thead>
+          <tbody id="published-tbody">
+          </tbody>
+        </table>
+      </div>
 
       <div class="panel" style="margin-top:1rem">
         <h3>How a draft becomes published</h3>
@@ -520,7 +528,7 @@
           <li><span class="ph-n">Step 3</span><span class="ph-name">Your Muse checks it. <span>It is your safeguard — it checks your work and keeps you secure.</span></span></li>
           <li><span class="ph-n">Step 4</span><span class="ph-name">You publish it yourself, and it appears here.</span></li>
         </ol>
-        <p class="p-sub">The publish step is being wired up right now. Until it&rsquo;s ready, nothing here publishes — your drafts save on this device only.</p>
+        <p class="p-sub">Publishing sends your draft to the repo as a record. Your live site is still WordPress until the DNS cutover — publishing does not change the live site by itself.</p>
       </div>
     </section>
 
@@ -552,7 +560,7 @@
       <div class="panel">
         <h3>What can&rsquo;t this page do yet?</h3>
         <ul class="spec">
-          <li>It cannot publish anything yet. The publish step is being wired up right now — your drafts save on this device until it&rsquo;s ready. When it&rsquo;s ready, you publish it yourself.</li>
+          <li>It cannot change the live WordPress site by itself. Publishing saves your draft as a record in the repo; the live site is still WordPress until the DNS cutover.</li>
           <li>It cannot send anything. Drafts save on this device only.</li>
           <li>It cannot change your domain or DNS records. Josh has the correct records.</li>
           <li>It cannot see anyone else&rsquo;s workspace. Your workspace is yours alone.</li>
@@ -570,7 +578,7 @@
 
 <footer class="colophon">
   <div class="rule">
-    <span>&copy; 2026 The United Citizens of America — Publisher CMS · Operation Forest Restoration · Private workspace · Draft only — nothing here publishes by itself.</span>
+    <span>&copy; 2026 The United Citizens of America — Publisher CMS · Operation Forest Restoration · Private workspace · You publish your own drafts from here; the live site is still WordPress until the DNS cutover.</span>
     <span><a href="/publisher-cms.html" title="Publisher sign-in" aria-label="Publisher sign-in"><svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="#b99b5f" stroke-width="1.6" role="img" aria-label="Open book — publisher sign-in"><path d="M17 5 C13 2 7 2 2 4 V22 C7 20 13 20 17 23 C21 20 27 20 32 22 V4 C27 2 21 2 17 5 Z"/><path d="M17 5 V23"/></svg></a></span>
   </div>
 </footer>
@@ -608,6 +616,7 @@
         auth: { persistSession: true, autoRefreshToken: true },
       });
     }
+    if (sb) { window.__publisherSupabase = sb; window.__publisherAnonKey = SUPABASE_ANON_KEY; }
     function $(sel) { return document.querySelector(sel); }
     function showApp() {
       $("#boot").classList.add("hidden");
@@ -651,16 +660,83 @@
   })();
 </script>
 <script>
-  /* ---------------- drafts (local only) ----------------
-     Drafts save in this browser only (localStorage). Nothing is
-     sent anywhere. The publish wiring (Supabase edge function) is
-     not built yet, so "ready to publish" is a local marker only —
-     Robert publishes it himself once the wiring is live. His Muse
+  /* ---------------- drafts (local) + publish ----------------
+     Drafts save in this browser only (localStorage). Publishing
+     sends a draft to the Supabase edge function "publish-draft",
+     which saves it as a record in the repo. The live site is still
+     WordPress until the DNS cutover — publishing does not change
+     the live site by itself. Robert publishes it himself. His Muse
      is his safeguard: it checks his work and keeps him secure. */
   (function () {
     var KEY = 'robert-publisher-drafts-v1';
     function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
     function store(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* storage blocked — drafts stay on screen only */ } }
+    var PUBLISH_URL = 'https://jesrbqrwbacuirwxbkis.supabase.co/functions/v1/publish-draft';
+    var PKEY = 'robert-publisher-published-v1';
+    function loadPublished() { try { return JSON.parse(localStorage.getItem(PKEY)) || []; } catch (e) { return []; } }
+    function storePublished(list) { try { localStorage.setItem(PKEY, JSON.stringify(list)); } catch (e) { /* storage blocked */ } }
+    function renderPublished() {
+      var list = loadPublished();
+      var wrap = document.getElementById('published-wrap');
+      var empty = document.getElementById('published-empty');
+      var tb = document.getElementById('published-tbody');
+      var tile = document.getElementById('tile-published');
+      if (tile) tile.textContent = String(list.length);
+      if (!tb) return;
+      if (!list.length) { tb.innerHTML = ''; if (wrap) wrap.style.display = 'none'; if (empty) empty.style.display = ''; return; }
+      if (wrap) wrap.style.display = '';
+      if (empty) empty.style.display = 'none';
+      tb.innerHTML = list.map(function (p) {
+        return '<tr><td data-label="Title">' + esc(p.title) + '</td><td data-label="Where">' + esc(p.where) + (p.panel ? ' &middot; Panel ' + esc(p.panel) : '') + '</td><td data-label="Published" class="num">' + esc(fmtDate(p.publishedAt)) + '</td><td data-label="Record" class="mono" style="font-size:.82rem;word-break:break-all">' + esc(p.path) + '</td></tr>';
+      }).join('');
+    }
+    function publishNote(msg) {
+      var n = document.getElementById('publish-note');
+      if (n) n.textContent = msg;
+    }
+    async function publishDraft(id, btn) {
+      var list = load();
+      var d = list.find(function (x) { return x.id === id; });
+      if (!d) return;
+      var sb = window.__publisherSupabase;
+      if (!sb) { publishNote('Could not publish — sign in again and try once more.'); return; }
+      btn.disabled = true;
+      var original = btn.textContent;
+      btn.textContent = 'Publishing…';
+      publishNote('');
+      try {
+        var res = await sb.auth.getSession();
+        var session = res.data && res.data.session;
+        if (!session || !session.access_token) {
+          publishNote('Your sign-in ran out — sign out and sign back in, then publish again.');
+          return;
+        }
+        var r = await fetch(PUBLISH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': window.__publisherAnonKey || '',
+            'Authorization': 'Bearer ' + session.access_token
+          },
+          body: JSON.stringify({ title: d.title, where: d.where, panel: d.panel || '', body: d.body })
+        });
+        var out = await r.json().catch(function () { return {}; });
+        if (r.status === 200 && out && out.ok) {
+          var published = loadPublished();
+          published.unshift({ title: d.title, where: d.where, panel: d.panel || '', path: out.path || '', sha: out.sha || '', publishedAt: new Date().toISOString() });
+          storePublished(published);
+          store(list.filter(function (x) { return x.id !== id; }));
+          render();
+          publishNote('Published — ' + (out.path || 'saved as a record in the repo') + '. It does not change the live WordPress site by itself.');
+        } else {
+          publishNote((out && out.error) ? out.error : 'Publishing did not go through — try again.');
+        }
+      } catch (e) {
+        publishNote('Publishing did not go through — check your connection and try again.');
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
     function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
     function statusChip(d) {
@@ -668,6 +744,7 @@
       return '<span class="chip pending">Draft</span>';
     }
     function render() {
+      renderPublished();
       var list = load();
       var tb = document.getElementById('drafts-tbody');
       var empty = document.getElementById('drafts-empty');
@@ -680,7 +757,7 @@
       if (empty) empty.style.display = 'none';
       tb.innerHTML = list.map(function (d) {
         var where = esc(d.where) + (d.panel ? ' &middot; Panel ' + esc(d.panel) : '');
-        return '<tr><td data-label="Title">' + esc(d.title) + '</td><td data-label="Where">' + where + '</td><td data-label="Saved" class="num">' + esc(fmtDate(d.updated)) + '</td><td data-label="Status">' + statusChip(d) + '</td><td data-label="Actions"><button type="button" class="btn live" data-open="' + esc(d.id) + '">Open</button> <button type="button" class="btn live" data-ready="' + esc(d.id) + '"' + (d.status === 'ready' ? ' disabled' : '') + '>Mark ready to publish</button> <button type="button" class="btn live" data-del="' + esc(d.id) + '">Delete</button></td></tr>';
+        return '<tr><td data-label="Title">' + esc(d.title) + '</td><td data-label="Where">' + where + '</td><td data-label="Saved" class="num">' + esc(fmtDate(d.updated)) + '</td><td data-label="Status">' + statusChip(d) + '</td><td data-label="Actions"><button type="button" class="btn live" data-open="' + esc(d.id) + '">Open</button> <button type="button" class="btn live" data-ready="' + esc(d.id) + '"' + (d.status === 'ready' ? ' disabled' : '') + '>Mark ready to publish</button>' + (d.status === 'ready' ? ' <button type="button" class="btn live primary" data-publish="' + esc(d.id) + '">Publish</button>' : '') + ' <button type="button" class="btn live" data-del="' + esc(d.id) + '">Delete</button></td></tr>';
       }).join('');
     }
     function saveDraft() {
@@ -695,7 +772,7 @@
       list.unshift({ id: 'd' + Date.now(), title: title, where: where, panel: panel, body: body, status: 'draft', created: now, updated: now });
       store(list);
       render();
-      note.textContent = 'Saved on this device only. Mark it ready to publish when it says what you mean — the publish step is being wired up right now.';
+      note.textContent = 'Saved on this device only. Mark it ready to publish when it says what you mean.';
     }
     function clearComposer() {
       document.getElementById('draft-title').value = '';
@@ -709,7 +786,9 @@
     document.getElementById('drafts-tbody').addEventListener('click', function (e) {
       var t = e.target;
       var list = load();
-      if (t.hasAttribute('data-ready')) {
+      if (t.hasAttribute('data-publish')) {
+        publishDraft(t.getAttribute('data-publish'), t);
+      } else if (t.hasAttribute('data-ready')) {
         var d = list.find(function (x) { return x.id === t.getAttribute('data-ready'); });
         if (d) { d.status = 'ready'; d.updated = new Date().toISOString(); store(list); render(); }
       } else if (t.hasAttribute('data-open')) {
