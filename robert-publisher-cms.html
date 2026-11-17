@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<link rel="icon" href="data:," />
+<title>Publisher CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#121418;
+    --bg-deep:#0c0e11;
+    --panel:#1a1d23;
+    --panel-2:#20242c;
+    --panel-3:#262b34;
+    --line:#363c46;
+    --line-soft:#2a2f38;
+    --steel:#8b95a3;
+    --ice:#cfd6de;
+    --paper:#eef1f4;
+    --muted:#9aa4b1;
+    --burgundy:#1e4d31;
+    --burgundy-2:#2e7d4f;
+    --red:#c04552;
+    --red-dim:#e08a92;
+    --gold:#b99b5f;
+    --ok:#7fae8d;
+    --radius:6px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg);
+    color:var(--paper);
+    font-family:"Source Sans 3", system-ui, sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit; min-height:2.5rem}
+  h1,h2,h3,.cond{font-family:"Archivo", system-ui, sans-serif}
+  .mono{font-family:"IBM Plex Mono", ui-monospace, monospace}
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    background:linear-gradient(180deg,#191c21 0%, var(--bg-deep) 100%);
+    border-bottom:3px solid var(--burgundy);
+    padding:1.1rem 1.5rem 1rem;
+  }
+  .mast-inner{max-width:1440px;margin:0 auto;display:flex;gap:1.25rem;align-items:flex-start;flex-wrap:wrap}
+  .shield{flex:0 0 auto;margin-top:.15rem}
+  .mast-titles{flex:1 1 320px;min-width:260px}
+  .org{font-family:"Archivo",sans-serif;font-size:.78rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--steel)}
+  .appname{font-size:2rem;font-weight:800;letter-spacing:.04em;line-height:1.05;margin:.15rem 0 .1rem;color:var(--paper)}
+  .opname{font-size:.95rem;color:var(--ice);font-weight:600;letter-spacing:.06em}
+  .opname span{color:var(--steel);font-weight:400}
+  .mast-meta{display:flex;flex-direction:column;gap:.45rem;align-items:flex-end}
+  .badges{display:flex;gap:.45rem;flex-wrap:wrap;justify-content:flex-end}
+  .badge{
+    font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    padding:.32rem .6rem;border:1px solid var(--line);border-radius:3px;color:var(--ice);background:var(--panel);
+    white-space:nowrap;
+  }
+  .badge.draft{background:var(--burgundy);border-color:var(--burgundy-2);color:#fff}
+  .badge.class{border-color:var(--burgundy-2);color:var(--red-dim)}
+  .role-line{font-size:.85rem;color:var(--muted);text-align:right}
+  .role-line strong{color:var(--paper);font-weight:700;letter-spacing:.05em}
+
+  /* ---------- Layout ---------- */
+  .shell{max-width:1440px;margin:0 auto;display:grid;grid-template-columns:248px 1fr;gap:0;align-items:start}
+  .sidebar{
+    border-right:1px solid var(--line-soft);
+    padding:1.1rem .9rem 2rem;
+    position:sticky;top:0;
+  }
+  .nav-label{font-family:"Archivo",sans-serif;font-size:.66rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--steel);margin:.4rem .5rem .6rem}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav button{
+    display:flex;align-items:center;gap:.65rem;width:100%;text-align:left;
+    background:transparent;border:1px solid transparent;border-radius:var(--radius);
+    color:var(--ice);font-size:.95rem;font-weight:600;padding:.55rem .6rem;cursor:pointer;
+  }
+  .nav button .n-ico{flex:0 0 auto;width:20px;height:20px;color:var(--steel)}
+  .nav button:hover{background:var(--panel)}
+  .nav button.active{background:var(--panel-2);border-color:var(--line);color:#fff;box-shadow:inset 3px 0 0 var(--burgundy-2)}
+  .nav button.active .n-ico{color:var(--red-dim)}
+  .nav button .count{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--muted);background:var(--bg-deep);border:1px solid var(--line-soft);border-radius:20px;padding:.05rem .45rem}
+  .side-note{margin:1.2rem .5rem 0;border-top:1px solid var(--line-soft);padding-top:.9rem;font-size:.8rem;color:var(--muted)}
+  .side-note strong{color:var(--ice);display:block;font-family:"Archivo",sans-serif;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;margin-bottom:.3rem}
+
+  .main{padding:1.4rem 1.6rem 3rem;min-width:0}
+  .view{display:none}
+  .view.active{display:block}
+  .view-head{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:.7rem;margin-bottom:1.2rem}
+  .view-head h2{font-size:1.45rem;font-weight:800;letter-spacing:.02em;margin:0}
+  .view-head .sub{color:var(--muted);font-size:.9rem}
+
+  /* ---------- Panels & tiles ---------- */
+  .grid{display:grid;gap:1rem}
+  .grid.tiles{grid-template-columns:repeat(4,1fr)}
+  .grid.two{grid-template-columns:1fr 1fr}
+  .grid.three{grid-template-columns:repeat(3,1fr)}
+  .tile{
+    background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);
+    padding:1rem 1.1rem .9rem;
+  }
+  .tile .t-label{font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--steel)}
+  .tile .t-num{font-family:"Archivo",sans-serif;font-size:2.1rem;font-weight:800;line-height:1.15;color:var(--paper)}
+  .tile .t-num.none{color:var(--steel);font-size:1.35rem;font-weight:700;padding:.35rem 0 .3rem}
+  .tile .t-note{font-size:.83rem;color:var(--muted)}
+  .tile.accent{border-top:3px solid var(--burgundy-2)}
+  .panel{
+    background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--radius);
+    padding:1.1rem 1.2rem 1.2rem;margin-bottom:1rem;
+  }
+  .panel > h3{margin:0 0 .35rem;font-size:1.02rem;font-weight:700;letter-spacing:.03em}
+  .panel .p-sub{color:var(--muted);font-size:.88rem;margin:0 0 .8rem}
+  .panel.flush{padding:0;overflow:hidden}
+  .panel.flush > h3,.panel.flush .p-sub{padding-left:1.2rem;padding-right:1.2rem}
+  .panel.flush > h3{padding-top:1.1rem}
+
+  /* status chips */
+  .chip{display:inline-block;font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:.18rem .5rem;border-radius:3px;border:1px solid var(--line);color:var(--ice);background:var(--panel-3);white-space:nowrap}
+  .chip.submitted{border-color:#4a5a48;color:#a9c6a4;background:#232a22}
+  .chip.declined{border-color:var(--burgundy-2);color:var(--red-dim);background:#2b1d21}
+  .chip.prepared{border-color:#5d543a;color:#d3c28d;background:#2a271e}
+  .chip.pending{border-color:var(--line);color:var(--muted)}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:.94rem}
+  th{font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);text-align:left;padding:.6rem .9rem;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  td{padding:.62rem .9rem;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--ice)}
+  tr:last-child td{border-bottom:none}
+  td.num{font-family:"IBM Plex Mono",monospace;font-size:.9rem;color:var(--paper);white-space:nowrap}
+  td .row-note{display:block;font-size:.8rem;color:var(--muted);font-family:"Source Sans 3",sans-serif}
+  .tbl-wrap{overflow-x:auto}
+
+  /* lists */
+  ul.spec{list-style:none;margin:0;padding:0}
+  ul.spec li{padding:.5rem 0 .5rem 1.6rem;position:relative;border-bottom:1px solid var(--line-soft);color:var(--ice)}
+  ul.spec li:last-child{border-bottom:none}
+  ul.spec li::before{content:"";position:absolute;left:.15rem;top:.86rem;width:.5rem;height:.5rem;background:var(--burgundy-2);border-radius:1px;transform:rotate(45deg)}
+  ul.check{list-style:none;margin:0;padding:0}
+  ul.check li{padding:.55rem 0 .55rem 2rem;position:relative;border-bottom:1px solid var(--line-soft);color:var(--ice)}
+  ul.check li:last-child{border-bottom:none}
+  ul.check li::before{
+    content:"";position:absolute;left:.1rem;top:.55rem;width:1.05rem;height:1.05rem;border:1.5px solid var(--steel);border-radius:2px;background:var(--bg-deep);
+  }
+  ul.check li::after{
+    content:"";position:absolute;left:.42rem;top:.62rem;width:.42rem;height:.68rem;border:solid var(--red-dim);border-width:0 2.5px 2.5px 0;transform:rotate(42deg);
+  }
+
+  .empty{
+    border:1.5px dashed var(--line);border-radius:var(--radius);padding:1.6rem 1.2rem;text-align:center;color:var(--muted);
+    background:var(--bg-deep);
+  }
+  .empty strong{display:block;color:var(--ice);font-family:"Archivo",sans-serif;font-size:.95rem;letter-spacing:.04em;margin-bottom:.25rem}
+  .callout{
+    border:1px solid var(--burgundy-2);background:#221a1e;border-radius:var(--radius);padding:.95rem 1.1rem;margin-bottom:1rem;
+  }
+  .callout strong{font-family:"Archivo",sans-serif;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--red-dim);display:block;margin-bottom:.3rem}
+  .callout p{margin:0;color:var(--ice);font-size:.94rem}
+  .kv{display:grid;grid-template-columns:190px 1fr;gap:.35rem 1rem;font-size:.94rem}
+  .kv dt{color:var(--steel);font-family:"Archivo",sans-serif;font-size:.74rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding-top:.18rem}
+  .kv dd{margin:0;color:var(--ice)}
+  .fn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}
+  .fn{
+    background:var(--panel-2);border:1px solid var(--line-soft);border-radius:var(--radius);
+    padding:.7rem .85rem;font-size:.9rem;color:var(--ice);display:flex;gap:.55rem;align-items:flex-start;
+  }
+  .fn svg{flex:0 0 auto;margin-top:.1rem;color:var(--steel)}
+  .editor{border:1px solid var(--line);border-radius:var(--radius);background:var(--bg-deep);padding:1rem}
+  .editor label{display:block;font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);margin:.7rem 0 .3rem}
+  .editor label:first-child{margin-top:0}
+  .field{
+    width:100%;background:var(--panel);border:1px solid var(--line-soft);border-radius:4px;color:var(--muted);
+    padding:.6rem .7rem;font:inherit;font-size:.95rem;
+  }
+  textarea.field{min-height:130px;resize:vertical}
+  .field:disabled{opacity:.75;cursor:not-allowed}
+  .btn{
+    display:inline-flex;align-items:center;gap:.5rem;background:var(--panel-3);border:1px solid var(--line);
+    color:var(--muted);border-radius:var(--radius);padding:.5rem .95rem;font-weight:600;font-size:.9rem;cursor:not-allowed;
+  }
+  .btn.primary{background:var(--burgundy);border-color:var(--burgundy-2);color:#e9dede}
+  .phases{list-style:none;margin:0;padding:0;counter-reset:ph}
+  .phases li{display:flex;gap:.9rem;padding:.6rem 0;border-bottom:1px solid var(--line-soft);align-items:baseline}
+  .phases li:last-child{border-bottom:none}
+  .phases .ph-n{font-family:"IBM Plex Mono",monospace;font-size:.8rem;color:var(--red-dim);flex:0 0 3.4rem}
+  .phases .ph-name{flex:1;color:var(--ice)}
+  .phases .ph-name span{color:var(--muted);font-size:.85rem}
+  .viewer{
+    border:1px solid var(--line);border-radius:var(--radius);background:repeating-linear-gradient(0deg,#17191e 0 34px,#15171c 34px 35px);
+    min-height:230px;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:2rem 1rem;
+  }
+  .viewer strong{display:block;color:var(--ice);font-family:"Archivo",sans-serif;letter-spacing:.05em;margin-bottom:.3rem}
+  footer.colophon{max-width:1440px;margin:0 auto;padding:0 1.6rem 2.2rem;color:var(--steel);font-size:.8rem}
+  footer.colophon .rule{border-top:1px solid var(--line-soft);padding-top:.8rem;display:flex;gap:1rem;flex-wrap:wrap;justify-content:space-between}
+
+  @media (max-width:1080px){
+    .grid.tiles{grid-template-columns:repeat(2,1fr)}
+    .grid.three,.fn-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:820px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{position:static;border-right:none;border-bottom:1px solid var(--line-soft);padding-bottom:1.1rem}
+    .nav{display:grid;grid-template-columns:1fr 1fr}
+    .nav button .count{display:none}
+    .side-note{display:none}
+    .main{padding:1.1rem 1rem 2.4rem}
+    .mast-meta{align-items:flex-start}
+    .badges{justify-content:flex-start}
+    .role-line{text-align:left}
+    .grid.two{grid-template-columns:1fr}
+    .kv{grid-template-columns:1fr}
+    .kv dt{padding-top:.55rem}
+    /* tables become stacked records */
+    table,thead,tbody,tr,td{display:block;width:100%}
+    thead{display:none}
+    tr{border-bottom:1px solid var(--line);padding:.45rem 0}
+    tr:last-child{border-bottom:none}
+    td{border-bottom:none;padding:.28rem .9rem}
+    td::before{content:attr(data-label);display:block;font-family:"Archivo",sans-serif;font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);margin-bottom:.1rem}
+    td.num{white-space:normal}
+  }
+  @media (max-width:520px){
+    .grid.tiles,.grid.three,.fn-grid{grid-template-columns:1fr}
+    .appname{font-size:1.6rem}
+    .nav{grid-template-columns:1fr}
+  }
+</style>
+<style>
+  /* ---------- sign-in gate (Phase 2) ---------- */
+  .hidden { display: none !important; }
+  .gate-boot { max-width: 28rem; margin: 0 auto; min-height: 70vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
+  .gate-signin { max-width: 28rem; margin: 0 auto; min-height: 70vh; display: flex; flex-direction: column; justify-content: center; padding: 2.5rem 1rem; }
+  .gate-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.5rem; }
+  .gate-org { font-size: .78rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--steel); }
+  .gate-card h1 { font-size: 1.6rem; margin: .35rem 0 .1rem; color: var(--paper); }
+  .gate-sub { color: var(--ice); margin: 0 0 1rem; font-size: .95rem; }
+  .gate-note { margin: 0 0 1rem; font-size: .875rem; line-height: 1.6; color: var(--muted); border-left: 3px solid var(--gold); padding-left: .75rem; }
+  .gate-note strong { color: var(--paper); }
+  .gate-card label { display: block; margin-bottom: .9rem; font-size: .875rem; font-weight: 600; color: var(--ice); }
+  .gate-card input { display: block; width: 100%; margin-top: .3rem; padding: .65rem .75rem; font-size: 1rem; color: var(--paper); background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--radius); }
+  .gate-error { color: var(--red-dim); font-size: .875rem; margin: 0 0 .9rem; }
+  .gate-card button[type="submit"] { width: 100%; padding: .7rem; font-size: 1rem; font-weight: 700; color: #fff; background: var(--burgundy-2); border: 1px solid var(--burgundy-2); border-radius: var(--radius); cursor: pointer; }
+  .signout-btn { margin-top: .5rem; padding: .45rem .8rem; font-size: .85rem; font-weight: 600; color: var(--ice); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); cursor: pointer; }
+</style>
+<style>
+  /* ---------- publisher extras (Nov 17, 2026) ---------- */
+  .btn.live{cursor:pointer;color:var(--paper)}
+  .btn.live.primary{background:var(--burgundy-2);border-color:var(--burgundy-2);color:#fff}
+  .btn.live:disabled{cursor:not-allowed;opacity:.55}
+  select.field{appearance:auto}
+  #draft-saved-note{color:var(--ok)}
+</style>
+</head>
+<body>
+<div id="boot" class="gate-boot"><p>Checking your sign-in…</p></div>
+
+<!-- Sign-in gate: the ONLY thing shown until a live session exists.
+     Shared portal: no email prefilled, no credentials stored in this page.
+     Each person signs in with their own account. -->
+<main id="signin" class="gate-signin hidden">
+  <div class="gate-card">
+    <div class="gate-org">The United Citizens of America</div>
+    <h1>Publisher CMS</h1>
+    <p class="gate-sub">Publisher — private workspace</p>
+    <form id="signin-form" novalidate>
+      <p class="gate-note">This portal is shared by more than one person. Sign in with your own account. <strong>Never leave your login credentials inside this portal</strong> — do not save your password here — and sign out when you are done.</p>
+      <label>Email
+        <input id="signin-email" type="email" autocomplete="username" required />
+      </label>
+      <label>Password
+        <input id="signin-password" type="password" autocomplete="current-password" required />
+      </label>
+      <p id="signin-error" class="gate-error hidden" role="alert"></p>
+      <button type="submit" id="signin-submit">Sign in</button>
+    </form>
+  </div>
+</main>
+
+<div id="app" class="hidden">
+
+<header class="masthead">
+  <div class="mast-inner">
+    <div class="shield" aria-hidden="true">
+      <svg width="58" height="66" viewBox="0 0 58 66" fill="none" role="img" aria-label="Pine tree insignia">
+        <path d="M29 3 L41 22 H17 Z" fill="#2e7d4f" stroke="#8b95a3" stroke-width="1.4"/>
+        <path d="M29 15 L45 37 H13 Z" fill="#2e7d4f" stroke="#8b95a3" stroke-width="1.4"/>
+        <path d="M29 27 L49 50 H9 Z" fill="#2e7d4f" stroke="#8b95a3" stroke-width="1.4"/>
+        <rect x="26" y="50" width="6" height="13" fill="#8a6b4a" stroke="#8b95a3" stroke-width="1"/>
+      </svg>
+    </div>
+    <div class="mast-titles">
+      <div class="org">The United Citizens of America</div>
+      <div class="appname">PUBLISHER CMS</div>
+      <div class="opname">Operation Forest Restoration <span>— private workspace console</span></div>
+    </div>
+    <div class="mast-meta">
+      <div class="badges">
+        <span class="badge draft">Draft Only</span>
+        <span class="badge class">Private</span>
+        <span class="badge">Built Nov 17, 2026</span>
+      </div>
+      <div class="role-line">Signed role: <strong>PUBLISHER</strong><br/>Public identity: Undisclosed · Personal identity: Confidential</div>
+      <button type="button" id="signout-btn" class="signout-btn">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="nav-label">Workspace</div>
+    <nav class="nav" id="mainNav" aria-label="Primary">
+      <button type="button" data-view="dashboard" class="active"><svg class="n-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="5"/><rect x="13" y="10" width="8" height="11"/><rect x="3" y="13" width="8" height="8"/></svg>Dashboard</button>
+      <button type="button" data-view="desk"><svg class="n-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Editing Desk</button>
+      <button type="button" data-view="drafts"><svg class="n-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h7M9 17h7"/></svg>Drafts<span class="count" id="nav-drafts-count">0</span></button>
+      <button type="button" data-view="published"><svg class="n-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Published</button>
+      <button type="button" data-view="help"><svg class="n-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3A2.6 2.6 0 1 1 12 12.4V14M12 17.2v.3"/></svg>Help &amp; Support</button>
+    </nav>
+    <div class="side-note">
+      <strong>Authorization state</strong>
+      Draft only. Nothing in this console publishes by itself. Publishing, repository changes, account changes, spending, and external contacts are <em>not</em> authorized from this page.
+    </div>
+    <div class="side-note">
+      <strong>Counts rule</strong>
+      Every count in this console is taken from the drafts saved on this device. Nothing is estimated or filled in.
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ================= DASHBOARD ================= -->
+    <section class="view active" id="view-dashboard">
+
+      <div class="view-head"><h2>Dashboard</h2><span class="sub">Publisher CMS · your printing press</span></div>
+
+      <div class="callout">
+        <strong>The picture, in plain words</strong>
+        <p>Think of a workbench with three things on it. Your auditor workspace is the filing cabinet — everything about your case, filed in order. This page is the printing press — where your ShastaWars page gets made. Your Muse is the assistant sitting at the bench. It has read everything in the filing cabinet. You tell it in plain words what you want to change, and it helps you write the draft, one step at a time. Nothing here goes live on its own. Josh reads every change first.</p>
+      </div>
+
+      <div class="grid tiles" style="margin-bottom:1rem">
+        <div class="tile accent"><div class="t-label">Drafts saved</div><div class="t-num" id="tile-drafts">0</div><div class="t-note">Saved on this device only</div></div>
+        <div class="tile accent"><div class="t-label">Awaiting Josh&rsquo;s review</div><div class="t-num" id="tile-awaiting">0</div><div class="t-note">Marked ready by you</div></div>
+        <div class="tile accent"><div class="t-label">Approved</div><div class="t-num" id="tile-approved">0</div><div class="t-note">Approved by Josh only</div></div>
+        <div class="tile"><div class="t-label">Published from this console</div><div class="t-num">0</div><div class="t-note">Nothing published yet</div></div>
+      </div>
+
+      <div class="panel">
+        <h3>How publishing works — five steps, in plain words</h3>
+        <ol class="phases">
+          <li><span class="ph-n">Step 1</span><span class="ph-name">Talk to your Muse. <span>Tell it in plain words what you want to change on your page. No code. Just say it.</span></span></li>
+          <li><span class="ph-n">Step 2</span><span class="ph-name">Write it as a draft. <span>Use the Editing Desk, or your Muse helps you write it. It saves on this device only.</span></span></li>
+          <li><span class="ph-n">Step 3</span><span class="ph-name">Mark it ready. <span>When the draft says what you mean, mark it ready for Josh&rsquo;s review.</span></span></li>
+          <li><span class="ph-n">Step 4</span><span class="ph-name">Josh reads it. <span>He is the Editor. Editor means he reviews each change before it goes live — editor is not owner. The site is yours.</span></span></li>
+          <li><span class="ph-n">Step 5</span><span class="ph-name">Only on his word it goes live. <span>Nothing in this console publishes by itself. Hana pushes it after Josh approves.</span></span></li>
+        </ol>
+      </div>
+
+      <div class="panel">
+        <h3>What your Muse does for you — its whole job</h3>
+        <p class="p-sub">Your Muse&rsquo;s whole job is to liberate you as much as possible — to help you do all the things you want to do: run your case, write your story, edit your site, publish. You lead. It makes it possible, one step at a time, by discussion.</p>
+        <p class="p-sub">Josh&rsquo;s whole job is just editing. He reviews each change before it goes live. That is all. If you have a question, you ask Josh. That is the whole relationship.</p>
+        <p class="p-sub">Your Muse is your assistant, the same way Hana is Josh&rsquo;s assistant. You talk, it does the work, Josh checks it.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Two things to be sure of</h3>
+        <ul class="spec">
+          <li><strong>You will not lose access.</strong> Your sign-in stays. Your workspace stays. Your domain stays in your account. Nothing gets taken away from you. If a tool ever changes — WordPress to this console, for example — you get the new way in before the old way goes away. You are never locked out.</li>
+          <li><strong>Equals, working together.</strong> Josh and you are equals. Publisher and editor are two halves of one job, not a boss and a worker. You are good friends building websites, publishing, and telling stories together. There is no takeover coming, and no one above you in your own work. Checking with Josh is normal teamwork — not permission from an owner.</li>
+        </ul>
+      </div>
+
+      <div class="grid two">
+        <div class="panel">
+          <h3>Your site, right now</h3>
+          <dl class="kv">
+            <dt>Live site</dt><dd>WordPress — still live, just like before. Nothing has changed.</dd>
+            <dt>Domain</dt><dd>shastacountywars.com — in your own IONOS account. The transfer went through.</dd>
+            <dt>DNS cutover</dt><dd>Pending. Do not change any DNS record — Josh has the correct records.</dd>
+            <dt>GitHub Pages copy</dt><dd>Not published. A staged copy exists in the private repo, but the live site is still WordPress.</dd>
+            <dt>This console</dt><dd>Built Nov 17, 2026. Local file only — not pushed live yet.</dd>
+            <dt>Publish wiring</dt><dd>Not built yet. Drafts save on this device only until the wiring is live.</dd>
+          </dl>
+        </div>
+        <div class="panel">
+          <h3>The rules that never change</h3>
+          <ul class="spec">
+            <li>Nothing publishes until Josh approves the exact change.</li>
+            <li>No words between us on a public page. No quoted words of Josh&rsquo;s. No profanity.</li>
+            <li>Sources are &ldquo;Verified sources&rdquo; and nothing more. Never give out a source.</li>
+            <li>The dead are named, always — Henry Lane and Doug Harless. The living stay redacted.</li>
+            <li>Cheri Dubuque and Forest are redacted; all other names stay.</li>
+            <li>Everything from you is your account unless it is marked VERIFIED.</li>
+            <li>No password, login, or credential value is ever put in this workspace.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Your auditor workspace</h3>
+        <p class="p-sub">Your filing cabinet lives next door, in the same console, under the same sign-in.</p>
+        <dl class="kv">
+          <dt>Address</dt><dd><span class="mono">thecitizenmovement.online/robert-auditor-cms.html</span></dd>
+          <dt>Inside it</dt><dd>8 reports · 5 findings · 16 filings · your full communications inventory · your property photo · transcripts</dd>
+        </dl>
+      </div>
+
+      <div class="panel">
+        <h3>Your Muse&rsquo;s files — what it has read</h3>
+        <p class="p-sub">Your Muse has read four files, so it knows your case and how to help you. The newest one wins if an older file disagrees with it.</p>
+        <ul class="spec">
+          <li><span class="mono">robert-auditor-dial-in.md</span> — Getting you dialed in for your auditing work.</li>
+          <li><span class="mono">robert-website-editing-instructions.md</span> — How your Muse helps you edit your website.</li>
+          <li><span class="mono">robert-what-we-are-building-for-you.md</span> — The workbench picture: what we are building for you, in plain words.</li>
+          <li><span class="mono">robert-update-brief-2026-11-17.md</span> — The latest word (Nov 17, 2026): the building work now, not lawfare mode. ShastaWars is yours; Josh is Editor, not owner; WordPress still live.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ================= EDITING DESK ================= -->
+    <section class="view" id="view-desk">
+
+      <div class="view-head"><h2>Editing Desk</h2><span class="sub">Plain text boxes — no code</span></div>
+
+      <div class="callout">
+        <strong>Baby steps</strong>
+        <p>One change at a time. Say it in plain words first — to your Muse, or type it here. You do not jump in the deep end on day one. If a box confuses you, leave it blank and ask your Muse.</p>
+      </div>
+
+      <div class="panel">
+        <h3>What is live now — for reference only</h3>
+        <p class="p-sub">These boxes show what your page says today. They cannot be changed here. Changes go in the draft composer below.</p>
+        <div class="editor">
+          <label>Tagline — this stays</label>
+          <input class="field" type="text" value="Fighting corruption" disabled />
+          <p class="p-sub" style="margin-top:.4rem">The tagline stays. It cannot be changed from this page.</p>
+          <label>Front page — how it is laid out</label>
+          <input class="field" type="text" value="Panels up top, audio below, remastered story underneath" disabled />
+          <label>Story — what it is</label>
+          <input class="field" type="text" value="Remastered story — facts only, document links intermingled" disabled />
+          <label>Audio — how it plays</label>
+          <input class="field" type="text" value="Soundtrack plays once on tap — no loop" disabled />
+          <label>Panel 5 — note on file</label>
+          <input class="field" type="text" value="SGT. ROURKE name-tag defect — on file in your auditor CMS" disabled />
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Write a draft</h3>
+        <p class="p-sub">A draft is only a draft. It saves on this device and goes nowhere until you mark it ready — and even then, nothing goes live until Josh approves the exact change.</p>
+        <div class="editor">
+          <label for="draft-title">Draft title — what is this change about?</label>
+          <input class="field" id="draft-title" type="text" placeholder="Example: Fix the words on Panel 5" />
+          <label for="draft-where">Where does this change go?</label>
+          <select class="field" id="draft-where">
+            <option>Front-page panel</option>
+            <option>Story text</option>
+            <option>Audio note</option>
+            <option>Something else</option>
+          </select>
+          <label for="draft-panel">Panel number — only if this is a panel change (leave blank if not)</label>
+          <input class="field" id="draft-panel" type="text" placeholder="Example: 5" />
+          <label for="draft-body">What do you want it to say? — write it in your own words</label>
+          <textarea class="field" id="draft-body" placeholder="Write the new words here, or paste what your Muse helped you write."></textarea>
+          <div style="margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap">
+            <button type="button" class="btn live primary" id="draft-save-btn">Save draft on this device</button>
+            <button type="button" class="btn live" id="draft-clear-btn">Clear the boxes</button>
+          </div>
+          <p class="p-sub" id="draft-saved-note" style="margin-top:.7rem"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DRAFTS ================= -->
+    <section class="view" id="view-drafts">
+
+      <div class="view-head"><h2>Drafts</h2><span class="sub">Yours, in order — nothing here is live</span></div>
+
+      <div class="callout">
+        <strong>Honest statuses</strong>
+        <p>A draft is a draft until Josh approves it. &ldquo;Awaiting Josh&rsquo;s review&rdquo; means you marked it ready — it still is not live, and it still is not sent anywhere until the wiring is built. Only Josh can mark a draft approved.</p>
+      </div>
+
+      <div class="panel">
+        <h3>Your drafts</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Title</th><th>Where</th><th>Saved</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="drafts-tbody">
+            </tbody>
+          </table>
+        </div>
+        <div class="empty" id="drafts-empty"><strong>No drafts yet</strong>Write your first draft in the Editing Desk. It will show up here.</div>
+      </div>
+    </section>
+
+    <!-- ================= PUBLISHED ================= -->
+    <section class="view" id="view-published">
+
+      <div class="view-head"><h2>Published</h2><span class="sub">What has gone live from this console</span></div>
+
+      <div class="empty"><strong>Nothing published from this console yet</strong>Your live site is still WordPress, and it stays that way until the publisher wiring is proven and Josh approves a change. When something does go live from here, it will be listed on this page with the date and the exact change.</div>
+
+      <div class="panel" style="margin-top:1rem">
+        <h3>How a draft becomes published</h3>
+        <ol class="phases">
+          <li><span class="ph-n">Step 1</span><span class="ph-name">You save a draft. <span>It lives on this device only.</span></span></li>
+          <li><span class="ph-n">Step 2</span><span class="ph-name">You mark it ready for Josh&rsquo;s review.</span></li>
+          <li><span class="ph-n">Step 3</span><span class="ph-name">Josh reads the exact change and approves it — or asks for a fix.</span></li>
+          <li><span class="ph-n">Step 4</span><span class="ph-name">Hana pushes the approved change live and it appears here.</span></li>
+        </ol>
+        <p class="p-sub">The push step is done by Hana, not by this page. This page never pushes anything by itself.</p>
+      </div>
+    </section>
+
+    <!-- ================= HELP ================= -->
+    <section class="view" id="view-help">
+
+      <div class="view-head"><h2>Help &amp; Support</h2><span class="sub">Plain words — ask your Muse when you are stuck</span></div>
+
+      <div class="panel">
+        <h3>How do I sign in?</h3>
+        <p class="p-sub">Use your member email and the password you already use. The sign-in page never fills in your email for you, and it never saves your password. If sign-in fails, tell Josh — do not set a new password on your own.</p>
+      </div>
+
+      <div class="panel">
+        <h3>How do I edit my page?</h3>
+        <p class="p-sub">Talk to your Muse first. Tell it in plain words what you want to change. It has read your papers, so it knows what you are talking about. It will help you write the draft. Then save the draft in the Editing Desk, and mark it ready when it says what you mean. One step at a time. There is no rush.</p>
+      </div>
+
+      <div class="panel">
+        <h3>What can my Muse do for me?</h3>
+        <ul class="spec">
+          <li>Answer questions from your own papers and your auditor workspace.</li>
+          <li>Help you write drafts in your own words, one step at a time.</li>
+          <li>Explain what a button does before you press it.</li>
+          <li>Tell you plainly when something needs Josh&rsquo;s go first.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>What can&rsquo;t this page do yet?</h3>
+        <ul class="spec">
+          <li>It cannot publish anything. Publishing needs Josh&rsquo;s approval and Hana&rsquo;s push.</li>
+          <li>It cannot send anything. Drafts save on this device only.</li>
+          <li>It cannot change your domain or DNS records. Josh has the correct records.</li>
+          <li>It cannot see anyone else&rsquo;s workspace. Your workspace is yours alone.</li>
+        </ul>
+      </div>
+
+      <div class="panel">
+        <h3>If you get stuck</h3>
+        <p class="p-sub">Ask your Muse. If it cannot help, tell Josh. Do not guess, do not force a button, and do not put any password into any page or file. Leaving a box blank is always fine.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="colophon">
+  <div class="rule">
+    <span>&copy; 2026 The United Citizens of America — Publisher CMS · Operation Forest Restoration · Private workspace · Draft only — nothing here publishes by itself.</span>
+    <span><a href="/publisher-cms.html" title="Publisher sign-in" aria-label="Publisher sign-in"><svg width="34" height="26" viewBox="0 0 34 26" fill="none" stroke="#b99b5f" stroke-width="1.6" role="img" aria-label="Open book — publisher sign-in"><path d="M17 5 C13 2 7 2 2 4 V22 C7 20 13 20 17 23 C21 20 27 20 32 22 V4 C27 2 21 2 17 5 Z"/><path d="M17 5 V23"/></svg></a></span>
+  </div>
+</footer>
+
+</div>
+
+<script>
+  (function(){
+    var nav = document.getElementById('mainNav');
+    var buttons = nav.querySelectorAll('button[data-view]');
+    function show(name){
+      buttons.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-view') === name); });
+      document.querySelectorAll('.view').forEach(function(v){ v.classList.toggle('active', v.id === 'view-' + name); });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    buttons.forEach(function(b){
+      b.addEventListener('click', function(){ show(b.getAttribute('data-view')); });
+    });
+  })();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  /* ---------------- sign-in gate (Phase 2) ----------------
+     Supabase Auth (email + password). Until a live session exists,
+     only the sign-in screen shows. No credentials are stored in
+     this page and no email is prefilled: the portal is shared, so
+     each person signs in with their own account. */
+  (function () {
+    var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
+    var SUPABASE_ANON_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc";
+    var sb = null;
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true },
+      });
+    }
+    function $(sel) { return document.querySelector(sel); }
+    function showApp() {
+      $("#boot").classList.add("hidden");
+      $("#signin").classList.add("hidden");
+      $("#app").classList.remove("hidden");
+    }
+    function showGate() {
+      $("#boot").classList.add("hidden");
+      $("#app").classList.add("hidden");
+      $("#signin").classList.remove("hidden");
+    }
+    if (!sb) { showGate(); return; }
+    sb.auth.getSession().then(function (res) {
+      if (res.data && res.data.session) showApp(); else showGate();
+    });
+    sb.auth.onAuthStateChange(function (_event, session) {
+      if (session) showApp(); else showGate();
+    });
+    $("#signin-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var err = $("#signin-error");
+      err.classList.add("hidden");
+      err.textContent = "";
+      var btn = $("#signin-submit");
+      btn.disabled = true;
+      sb.auth.signInWithPassword({
+        email: $("#signin-email").value.trim(),
+        password: $("#signin-password").value,
+      }).then(function (res) {
+        btn.disabled = false;
+        if (res.error) {
+          err.textContent = "Could not sign in — check the email and password and try again.";
+          err.classList.remove("hidden");
+        }
+      });
+    });
+    var out = $("#signout-btn");
+    if (out) out.addEventListener("click", function () {
+      sb.auth.signOut().then(function () { /* onAuthStateChange shows the gate */ });
+    });
+  })();
+</script>
+<script>
+  /* ---------------- drafts (local only) ----------------
+     Drafts save in this browser only (localStorage). Nothing is
+     sent anywhere. The publish wiring (Supabase edge function) is
+     not built yet, so "ready for review" is a local marker only —
+     Robert still tells Josh directly. Only Josh can mark a draft
+     approved; this page never sets "approved" itself. */
+  (function () {
+    var KEY = 'robert-publisher-drafts-v1';
+    function load() { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } }
+    function store(list) { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) { /* storage blocked — drafts stay on screen only */ } }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+    function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+    function statusChip(d) {
+      if (d.status === 'awaiting') return '<span class="chip prepared">Awaiting Josh&rsquo;s review</span>';
+      return '<span class="chip pending">Draft</span>';
+    }
+    function render() {
+      var list = load();
+      var tb = document.getElementById('drafts-tbody');
+      var empty = document.getElementById('drafts-empty');
+      var awaiting = list.filter(function (d) { return d.status === 'awaiting'; }).length;
+      document.getElementById('nav-drafts-count').textContent = String(list.length);
+      document.getElementById('tile-drafts').textContent = String(list.length);
+      document.getElementById('tile-awaiting').textContent = String(awaiting);
+      if (!tb) return;
+      if (!list.length) { tb.innerHTML = ''; if (empty) empty.style.display = ''; return; }
+      if (empty) empty.style.display = 'none';
+      tb.innerHTML = list.map(function (d) {
+        var where = esc(d.where) + (d.panel ? ' &middot; Panel ' + esc(d.panel) : '');
+        return '<tr><td data-label="Title">' + esc(d.title) + '</td><td data-label="Where">' + where + '</td><td data-label="Saved" class="num">' + esc(fmtDate(d.updated)) + '</td><td data-label="Status">' + statusChip(d) + '</td><td data-label="Actions"><button type="button" class="btn live" data-open="' + esc(d.id) + '">Open</button> <button type="button" class="btn live" data-ready="' + esc(d.id) + '"' + (d.status === 'awaiting' ? ' disabled' : '') + '>Mark ready for Josh&rsquo;s review</button> <button type="button" class="btn live" data-del="' + esc(d.id) + '">Delete</button></td></tr>';
+      }).join('');
+    }
+    function saveDraft() {
+      var title = document.getElementById('draft-title').value.trim();
+      var where = document.getElementById('draft-where').value;
+      var panel = document.getElementById('draft-panel').value.trim();
+      var body = document.getElementById('draft-body').value.trim();
+      var note = document.getElementById('draft-saved-note');
+      if (!title || !body) { note.textContent = 'Write a title and the new words first — both boxes need something in them.'; return; }
+      var list = load();
+      var now = new Date().toISOString();
+      list.unshift({ id: 'd' + Date.now(), title: title, where: where, panel: panel, body: body, status: 'draft', created: now, updated: now });
+      store(list);
+      render();
+      note.textContent = 'Saved on this device only. It goes nowhere until you mark it ready — and nothing goes live until Josh approves it.';
+    }
+    function clearComposer() {
+      document.getElementById('draft-title').value = '';
+      document.getElementById('draft-where').selectedIndex = 0;
+      document.getElementById('draft-panel').value = '';
+      document.getElementById('draft-body').value = '';
+      document.getElementById('draft-saved-note').textContent = '';
+    }
+    document.getElementById('draft-save-btn').addEventListener('click', saveDraft);
+    document.getElementById('draft-clear-btn').addEventListener('click', clearComposer);
+    document.getElementById('drafts-tbody').addEventListener('click', function (e) {
+      var t = e.target;
+      var list = load();
+      if (t.hasAttribute('data-ready')) {
+        var d = list.find(function (x) { return x.id === t.getAttribute('data-ready'); });
+        if (d) { d.status = 'awaiting'; d.updated = new Date().toISOString(); store(list); render(); }
+      } else if (t.hasAttribute('data-open')) {
+        var o = list.find(function (x) { return x.id === t.getAttribute('data-open'); });
+        if (o) {
+          document.getElementById('draft-title').value = o.title;
+          document.getElementById('draft-where').value = o.where;
+          document.getElementById('draft-panel').value = o.panel || '';
+          document.getElementById('draft-body').value = o.body;
+          document.getElementById('draft-saved-note').textContent = 'Opened for editing. Save it again when you are done — saving keeps it as a draft.';
+          document.querySelector('button[data-view="desk"]').click();
+        }
+      } else if (t.hasAttribute('data-del')) {
+        if (window.confirm('Delete this draft? It only exists on this device.')) {
+          store(list.filter(function (x) { return x.id !== t.getAttribute('data-del'); }));
+          render();
+        }
+      }
+    });
+    render();
+  })();
+</script>
+
+</body>
+</html>
