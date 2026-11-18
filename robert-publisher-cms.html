@@ -489,7 +489,7 @@
 
       <div class="callout">
         <strong>Honest statuses</strong>
-        <p>A draft is a draft until you publish it. &ldquo;Ready to publish&rdquo; means you marked it ready — it still is not live. Press Publish and it goes to the repo as a record. It does not change the live WordPress site by itself. Your Muse is your safeguard: it checks your work and keeps you secure while you do what you need to do.</p>
+        <p>A draft is a draft until you publish it. &ldquo;Ready to publish&rdquo; means you marked it ready — it still is not live. Press Publish and it goes to the repo as a record. It does not change the live WordPress site by itself. Your Muse is your safeguard: it checks your work and keeps you secure while you do what you need to do. Press &ldquo;Share with Muse&rdquo; on any draft to send your Muse the preview look first.</p>
       </div>
 
       <div class="panel">
@@ -505,6 +505,23 @@
         <p class="p-sub" id="publish-note" style="margin-top:.7rem"></p>
       </div>
     </section>
+
+    <!-- ================= PREVIEW (shared with Muse) ================= -->
+    <div id="preview-modal" style="display:none;margin-top:1rem">
+      <div class="view-head"><h2>Preview — how it will look</h2><span class="sub">Shared with your Muse · not live</span></div>
+      <div class="panel">
+        <h3 id="preview-title"></h3>
+        <p class="p-sub" id="preview-where"></p>
+        <p id="preview-body" style="white-space:pre-wrap"></p>
+        <p class="p-sub">This is a preview only. It does not change your live WordPress site. Your Muse can open the link below and check the look before anything goes live.</p>
+        <p><a id="preview-link" href="#" target="_blank" rel="noopener" style="word-break:break-all"></a></p>
+        <div style="margin-top:.9rem;display:flex;gap:.6rem;flex-wrap:wrap">
+          <button type="button" class="btn live primary" id="preview-copy">Copy link for your Muse</button>
+          <button type="button" class="btn live" id="preview-close">Close preview</button>
+        </div>
+        <p class="p-sub" id="preview-copied" style="margin-top:.7rem"></p>
+      </div>
+    </div>
 
     <!-- ================= PUBLISHED ================= -->
     <section class="view" id="view-published">
@@ -525,7 +542,7 @@
         <ol class="phases">
           <li><span class="ph-n">Step 1</span><span class="ph-name">You save a draft. <span>It lives on this device only.</span></span></li>
           <li><span class="ph-n">Step 2</span><span class="ph-name">You mark it ready to publish.</span></li>
-          <li><span class="ph-n">Step 3</span><span class="ph-name">Your Muse checks it. <span>It is your safeguard — it checks your work and keeps you secure.</span></span></li>
+          <li><span class="ph-n">Step 3</span><span class="ph-name">Your Muse checks it. <span>Press &ldquo;Share with Muse&rdquo; on the draft — it sends your Muse a preview link so it can check the look before anything goes live. It is your safeguard — it checks your work and keeps you secure.</span></span></li>
           <li><span class="ph-n">Step 4</span><span class="ph-name">You publish it yourself, and it appears here.</span></li>
         </ol>
         <p class="p-sub">Publishing sends your draft to the repo as a record. Your live site is still WordPress until the DNS cutover — publishing does not change the live site by itself.</p>
@@ -737,6 +754,75 @@
         btn.disabled = false; btn.textContent = original;
       }
     }
+    var SKEY = 'robert-publisher-shared-v1';
+    function loadShared() { try { return JSON.parse(localStorage.getItem(SKEY)) || []; } catch (e) { return []; } }
+    function storeShared(list) { try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch (e) { /* storage blocked */ } }
+    function showPreview(d, url) {
+      var m = document.getElementById('preview-modal');
+      if (!m) return;
+      document.getElementById('preview-title').textContent = d.title;
+      document.getElementById('preview-where').textContent = d.where + (d.panel ? ' · Panel ' + d.panel : '');
+      document.getElementById('preview-body').textContent = d.body;
+      var link = document.getElementById('preview-link');
+      link.href = url; link.textContent = url;
+      document.getElementById('preview-copy').onclick = function () {
+        var done = function () { document.getElementById('preview-copied').textContent = 'Link copied — paste it to your Muse.'; };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(done, function () {
+            document.getElementById('preview-copied').textContent = 'Copy did not work — long-press the link above and copy it by hand.';
+          });
+        } else {
+          document.getElementById('preview-copied').textContent = 'Copy is not available here — long-press the link above and copy it by hand.';
+        }
+      };
+      document.getElementById('preview-copied').textContent = '';
+      m.style.display = '';
+      m.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    async function shareWithMuse(id, btn) {
+      var list = load();
+      var d = list.find(function (x) { return x.id === id; });
+      if (!d) return;
+      var sb = window.__publisherSupabase;
+      if (!sb) { publishNote('Could not share — sign in again and try once more.'); return; }
+      btn.disabled = true;
+      var original = btn.textContent;
+      btn.textContent = 'Sharing…';
+      publishNote('');
+      try {
+        var res = await sb.auth.getSession();
+        var session = res.data && res.data.session;
+        if (!session || !session.access_token) {
+          publishNote('Your sign-in ran out — sign out and sign back in, then share again.');
+          return;
+        }
+        var r = await fetch(PUBLISH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': window.__publisherAnonKey || '',
+            'Authorization': 'Bearer ' + session.access_token
+          },
+          body: JSON.stringify({ title: d.title, where: d.where, panel: d.panel || '', body: d.body, preview: true })
+        });
+        var out = await r.json().catch(function () { return {}; });
+        if (r.status === 200 && out && out.ok && out.url) {
+          var shared = loadShared();
+          shared.unshift({ title: d.title, where: d.where, panel: d.panel || '', path: out.path || '', url: out.url, sharedAt: new Date().toISOString() });
+          storeShared(shared);
+          showPreview(d, out.url);
+          publishNote('Shared with your Muse — the preview link is below. Nothing is live; your live site is still WordPress.');
+        } else {
+          publishNote((out && out.error) ? out.error : 'Sharing did not go through — try again.');
+        }
+      } catch (e) {
+        publishNote('Sharing did not go through — check your connection and try again.');
+      } finally {
+        btn.disabled = false; btn.textContent = original;
+      }
+    }
+    var pc = document.getElementById('preview-close');
+    if (pc) pc.addEventListener('click', function () { var m = document.getElementById('preview-modal'); if (m) m.style.display = 'none'; });
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
     function fmtDate(iso) { var d = new Date(iso); return isNaN(d) ? iso : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
     function statusChip(d) {
@@ -757,7 +843,7 @@
       if (empty) empty.style.display = 'none';
       tb.innerHTML = list.map(function (d) {
         var where = esc(d.where) + (d.panel ? ' &middot; Panel ' + esc(d.panel) : '');
-        return '<tr><td data-label="Title">' + esc(d.title) + '</td><td data-label="Where">' + where + '</td><td data-label="Saved" class="num">' + esc(fmtDate(d.updated)) + '</td><td data-label="Status">' + statusChip(d) + '</td><td data-label="Actions"><button type="button" class="btn live" data-open="' + esc(d.id) + '">Open</button> <button type="button" class="btn live" data-ready="' + esc(d.id) + '"' + (d.status === 'ready' ? ' disabled' : '') + '>Mark ready to publish</button>' + (d.status === 'ready' ? ' <button type="button" class="btn live primary" data-publish="' + esc(d.id) + '">Publish</button>' : '') + ' <button type="button" class="btn live" data-del="' + esc(d.id) + '">Delete</button></td></tr>';
+        return '<tr><td data-label="Title">' + esc(d.title) + '</td><td data-label="Where">' + where + '</td><td data-label="Saved" class="num">' + esc(fmtDate(d.updated)) + '</td><td data-label="Status">' + statusChip(d) + '</td><td data-label="Actions"><button type="button" class="btn live" data-open="' + esc(d.id) + '">Open</button> <button type="button" class="btn live" data-ready="' + esc(d.id) + '"' + (d.status === 'ready' ? ' disabled' : '') + '>Mark ready to publish</button>' + (d.status === 'ready' ? ' <button type="button" class="btn live primary" data-publish="' + esc(d.id) + '">Publish</button>' : '') + ' <button type="button" class="btn live" data-share="' + esc(d.id) + '">Share with Muse</button>' + ' <button type="button" class="btn live" data-del="' + esc(d.id) + '">Delete</button></td></tr>';
       }).join('');
     }
     function saveDraft() {
@@ -786,7 +872,9 @@
     document.getElementById('drafts-tbody').addEventListener('click', function (e) {
       var t = e.target;
       var list = load();
-      if (t.hasAttribute('data-publish')) {
+      if (t.hasAttribute('data-share')) {
+        shareWithMuse(t.getAttribute('data-share'), t);
+      } else if (t.hasAttribute('data-publish')) {
         publishDraft(t.getAttribute('data-publish'), t);
       } else if (t.hasAttribute('data-ready')) {
         var d = list.find(function (x) { return x.id === t.getAttribute('data-ready'); });
