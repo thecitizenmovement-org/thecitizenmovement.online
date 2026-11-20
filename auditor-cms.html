@@ -2205,6 +2205,24 @@
           </tbody>
         </table></div>
       </div>
+      <div class="panel" id="audio-upload-panel">
+        <h3>Upload audio clip</h3>
+        <p class="p-sub">Upload a new recording here — it joins the recordings above. Accepted formats: MP3, M4A, WAV, OGG, AAC, Opus, FLAC. Maximum 50 MB per clip. Files are stored privately in the movement's storage — the same private bucket the Foundry toolkit loads from — under your own audio folder, and filed into the transcripts evidence area from there. Originals are never overwritten.</p>
+        <p>
+          <input type="file" id="audio-file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.opus,.flac,.wma" hidden>
+          <button type="button" class="btn" id="audio-choose-btn">Choose audio clip</button>
+          <span id="audio-file-name" class="mono"></span>
+        </p>
+        <p>
+          <button type="button" class="btn primary" id="audio-upload-btn" disabled>Upload audio clip</button>
+        </p>
+        <p class="p-sub" id="audio-status" role="status"></p>
+        <div id="audio-player-wrap" hidden>
+          <p class="p-sub">Uploaded — play it back:</p>
+          <audio id="audio-player" controls preload="metadata" style="width:100%"></audio>
+          <p class="p-sub">Stored as <span class="mono" id="audio-stored-path"></span> · playback link works for one hour.</p>
+        </div>
+      </div>
       <div class="panel">
         <h3>Photos and screenshots on file — 104 images</h3>
         <p class="p-sub">Images downloaded in the Nov 17, 2026 sweep, by batch. The 8 photos in the Nov 15, 2:19 AM email carry the same filenames as the 8 photos in the Nov 11, 10:30 PM email — they appear to be the same set re-sent. Files live in the sweep folder; the links below point to their planned locations in the CMS files area (see the upload list — the files are not in the repo yet).</p>
@@ -2538,6 +2556,77 @@
     });
   })();
 </script>
+<script>
+  /* ---------------- audio clip upload ----------------
+     Uploads an audio file to the private Supabase Storage bucket
+     "member-documents" (the same bucket the Foundry toolkit loads
+     from), under audio/<signed-in user id>/<timestamp>-<name>.
+     Uses the signed-in session — the button does nothing until a
+     session exists. Playback uses a 1-hour signed URL.
+     Storage note: the bucket's policies must allow authenticated
+     users to upload into their own audio/ folder, or the upload
+     fails with the policy error shown in the status line. */
+  (function () {
+    var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
+    var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc";
+    var BUCKET = "member-documents";
+    var MAX_BYTES = 50 * 1024 * 1024; /* 50 MB per clip */
+    var AUDIO_EXTS = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".opus", ".flac", ".wma"];
+    var input = document.getElementById("audio-file");
+    var chooseBtn = document.getElementById("audio-choose-btn");
+    var uploadBtn = document.getElementById("audio-upload-btn");
+    var nameEl = document.getElementById("audio-file-name");
+    var statusEl = document.getElementById("audio-status");
+    var playerWrap = document.getElementById("audio-player-wrap");
+    var player = document.getElementById("audio-player");
+    var pathEl = document.getElementById("audio-stored-path");
+    if (!input || !uploadBtn) return;
+    function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
+    function mb(n) { return (n / 1048576).toFixed(1) + " MB"; }
+    function extOf(name) { var i = name.lastIndexOf("."); return i >= 0 ? name.slice(i).toLowerCase() : ""; }
+    chooseBtn.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () {
+      var f = input.files && input.files[0];
+      if (playerWrap) playerWrap.hidden = true;
+      if (!f) { nameEl.textContent = ""; uploadBtn.disabled = true; setStatus(""); return; }
+      nameEl.textContent = f.name + " (" + mb(f.size) + ")";
+      var okType = (f.type && f.type.indexOf("audio/") === 0) || AUDIO_EXTS.indexOf(extOf(f.name)) >= 0;
+      if (!okType) { setStatus("That file is not audio. Accepted formats: MP3, M4A, WAV, OGG, AAC, Opus, FLAC."); uploadBtn.disabled = true; return; }
+      if (f.size > MAX_BYTES) { setStatus("That clip is " + mb(f.size) + " — the limit is 50 MB per clip."); uploadBtn.disabled = true; return; }
+      setStatus("Ready to upload.");
+      uploadBtn.disabled = false;
+    });
+    uploadBtn.addEventListener("click", function () {
+      var f = input.files && input.files[0];
+      if (!f) return;
+      if (!window.supabase || !window.supabase.createClient) { setStatus("The member system could not load. Check your connection and refresh."); return; }
+      uploadBtn.disabled = true;
+      chooseBtn.disabled = true;
+      setStatus("Uploading…");
+      var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+      sb.auth.getSession().then(function (res) {
+        var sess = res.data && res.data.session;
+        if (!sess || !sess.user) { setStatus("Sign in first — audio uploads need your signed-in account."); uploadBtn.disabled = false; chooseBtn.disabled = false; return; }
+        var safe = f.name.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/_+/g, "_");
+        var stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        var path = "audio/" + sess.user.id + "/" + stamp + "_" + safe;
+        sb.storage.from(BUCKET).upload(path, f, { contentType: f.type || "audio/mpeg", upsert: false }).then(function (up) {
+          if (up.error) { setStatus("Upload failed: " + up.error.message); uploadBtn.disabled = false; chooseBtn.disabled = false; return; }
+          sb.storage.from(BUCKET).createSignedUrl(path, 3600).then(function (sg) {
+            if (sg.error || !sg.data || !sg.data.signedUrl) { setStatus("Uploaded as " + path + ", but the playback link could not be made. The file is stored."); }
+            else {
+              player.src = sg.data.signedUrl;
+              pathEl.textContent = path;
+              playerWrap.hidden = false;
+              setStatus("Uploaded.");
+            }
+            uploadBtn.disabled = false; chooseBtn.disabled = false;
+          });
+        });
+      });
+    });
+  })();
+</script>
 <!-- ============================================================
      CMS PUBLISH — owner gatekeeping (insert before </body>)
      The owner of this CMS — and only the owner — can make their own
@@ -2748,5 +2837,6 @@
   }
 })();
 </script>
+
 </body>
 </html>
