@@ -1155,5 +1155,215 @@
     });
   })();
 </script>
+<!-- ============================================================
+     CMS PUBLISH — owner gatekeeping (insert before </body>)
+     The owner of this CMS — and only the owner — can make their own
+     files public, from inside their own CMS. Nobody else publishes
+     for them. A warning shows before anything goes public.
+     Set CMS_SLUG to "shannon", "robert", or "founder" for the page.
+     Requires the cms-publish edge function (not deployed yet — the
+     panel says so plainly until it is).
+     ============================================================ -->
+<style>
+  .pub-panel { border: 2px solid #8a6d1b; border-radius: 10px; padding: 18px; margin: 18px 0; background: #141414; color: #f5f5f5; }
+  .pub-panel h3 { margin: 0 0 6px; font-size: 20px; }
+  .pub-panel p { margin: 6px 0; font-size: 16px; line-height: 1.5; }
+  .pub-panel .pub-note { color: #d8c27a; }
+  .pub-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid #333; flex-wrap: wrap; }
+  .pub-row .pub-name { font-size: 16px; word-break: break-all; }
+  .pub-row .pub-meta { font-size: 14px; color: #bbb; }
+  .pub-btn { background: #8a6d1b; color: #fff; border: none; border-radius: 6px; padding: 10px 16px; font-size: 16px; cursor: pointer; }
+  .pub-btn[disabled] { background: #444; color: #aaa; cursor: default; }
+  .pub-link { color: #7ec8ff; font-size: 15px; word-break: break-all; }
+  .pub-status { font-size: 14px; }
+  #pub-warning { position: fixed; inset: 0; background: rgba(0,0,0,.8); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; }
+  #pub-warning[hidden] { display: none; }
+  .pub-modal { background: #111; border: 3px solid #c0392b; border-radius: 12px; max-width: 560px; width: 100%; padding: 24px; color: #fff; }
+  .pub-modal h3 { margin: 0 0 10px; font-size: 22px; color: #ff8a7a; }
+  .pub-modal p { font-size: 17px; line-height: 1.55; margin: 10px 0; }
+  .pub-modal .pub-file { word-break: break-all; color: #d8c27a; }
+  .pub-modal .pub-actions { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+  .pub-confirm { background: #c0392b; color: #fff; border: none; border-radius: 6px; padding: 12px 18px; font-size: 17px; cursor: pointer; }
+  .pub-cancel { background: #333; color: #fff; border: 1px solid #777; border-radius: 6px; padding: 12px 18px; font-size: 17px; cursor: pointer; }
+</style>
+
+<div class="pub-panel" id="pub-panel">
+  <h3>Make a file public</h3>
+  <p class="pub-note">Your files are private until you choose otherwise. You are the gatekeeper of your own data and files — nobody else publishes them for you.</p>
+  <p id="pub-list-status">Loading your private files…</p>
+  <div id="pub-list"></div>
+</div>
+
+<div id="pub-warning" hidden>
+  <div class="pub-modal" role="alertdialog" aria-labelledby="pub-warn-title">
+    <h3 id="pub-warn-title">Make this file public?</h3>
+    <p>File: <span class="pub-file" id="pub-warn-file"></span></p>
+    <p><strong>Once you make this file public, anyone on the internet can read it and find it.</strong> Search engines can list it, and anyone can copy it or share it onward.</p>
+    <p>Even if you take it down later, copies may keep circulating.</p>
+    <p>This is your choice and your responsibility. Nobody else is publishing this for you.</p>
+    <div class="pub-actions">
+      <button type="button" class="pub-confirm" id="pub-confirm">I understand — make it public</button>
+      <button type="button" class="pub-cancel" id="pub-cancel">Keep it private</button>
+    </div>
+    <p class="pub-status" id="pub-warn-status"></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var CMS_SLUG = "robert"; // "shannon" | "robert" | "founder"
+  var FN_URL = "https://jesrbqrwbacuirwxbkis.supabase.co/functions/v1/cms-publish";
+  var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc";
+
+  var listEl = document.getElementById("pub-list");
+  var statusEl = document.getElementById("pub-list-status");
+  var warnEl = document.getElementById("pub-warning");
+  var warnFileEl = document.getElementById("pub-warn-file");
+  var warnStatusEl = document.getElementById("pub-warn-status");
+  var pending = null;
+
+  function fmtSize(n) {
+    if (n >= 1048576) return (n / 1048576).toFixed(1) + " MB";
+    if (n >= 1024) return (n / 1024).toFixed(1) + " KB";
+    return n + " bytes";
+  }
+
+  function showWarn(file) {
+    pending = file;
+    warnFileEl.textContent = file.private_path;
+    warnStatusEl.textContent = "";
+    warnEl.hidden = false;
+  }
+  function hideWarn() { warnEl.hidden = true; pending = null; }
+
+  document.getElementById("pub-cancel").addEventListener("click", hideWarn);
+
+  document.getElementById("pub-confirm").addEventListener("click", async function () {
+    if (!pending) return;
+    var btn = document.getElementById("pub-confirm");
+    btn.disabled = true;
+    warnStatusEl.textContent = "Publishing…";
+    try {
+      var session = await getSession();
+      if (!session) throw new Error("You are not signed in. Sign in and try again.");
+      var res = await fetch(FN_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + session.access_token
+        },
+        body: JSON.stringify({ action: "publish", cms: CMS_SLUG, private_path: pending.private_path })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(data.error || ("Publish failed (" + res.status + ")"));
+      warnStatusEl.textContent = "Public now: " + data.public_url;
+      renderRow(pending, data.public_url);
+      setTimeout(hideWarn, 2500);
+    } catch (e) {
+      warnStatusEl.textContent = e.message || "Publish failed.";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  var client = null;
+  function getClient() {
+    if (client) return client;
+    if (!window.supabase || !window.supabase.createClient) return null;
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true }
+    });
+    return client;
+  }
+  async function getSession() {
+    var c = getClient();
+    if (!c) return null;
+    var r = await c.auth.getSession();
+    return r.data && r.data.session ? r.data.session : null;
+  }
+
+  function renderRow(file, publicUrl) {
+    var row = document.querySelector('[data-priv="' + file.private_path.replace(/"/g, "") + '"]');
+    if (!row) return;
+    var right = row.querySelector(".pub-right");
+    if (publicUrl) {
+      right.innerHTML = '<span class="pub-status">Public</span> <a class="pub-link" href="' + publicUrl + '" target="_blank" rel="noopener">open public copy</a>';
+    }
+  }
+
+  async function load() {
+    try {
+      var session = await getSession();
+      if (!session) {
+        statusEl.textContent = "Sign in to see your private files and publish them.";
+        return;
+      }
+      var res = await fetch(FN_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + session.access_token
+        },
+        body: JSON.stringify({ action: "list", cms: CMS_SLUG })
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        if (res.status === 403) statusEl.textContent = "This CMS belongs to someone else — only its owner can publish from it.";
+        else if (res.status === 503) statusEl.textContent = "Publishing is not set up yet. Your files stay private until it is.";
+        else statusEl.textContent = "Could not load your files. (" + (data.error || res.status) + ")";
+        return;
+      }
+      var files = data.files || [];
+      if (!files.length) {
+        statusEl.textContent = "No private files to publish yet.";
+        return;
+      }
+      statusEl.textContent = files.length + " private file(s). Public ones show their link.";
+      listEl.innerHTML = "";
+      files.forEach(function (f) {
+        var row = document.createElement("div");
+        row.className = "pub-row";
+        row.setAttribute("data-priv", f.private_path);
+        var left = document.createElement("div");
+        var name = document.createElement("div");
+        name.className = "pub-name";
+        name.textContent = f.private_path.split("/").pop();
+        var meta = document.createElement("div");
+        meta.className = "pub-meta";
+        meta.textContent = fmtSize(f.size) + " · " + f.private_path;
+        left.appendChild(name);
+        left.appendChild(meta);
+        var right = document.createElement("div");
+        right.className = "pub-right";
+        if (f.is_public) {
+          var url = "https://thecitizenmovement.online/" + f.public_path;
+          right.innerHTML = '<span class="pub-status">Public</span> <a class="pub-link" href="' + url + '" target="_blank" rel="noopener">open public copy</a>';
+        } else {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "pub-btn";
+          b.textContent = "Make public";
+          b.addEventListener("click", function () { showWarn(f); });
+          right.appendChild(b);
+        }
+        row.appendChild(left);
+        row.appendChild(right);
+        listEl.appendChild(row);
+      });
+    } catch (e) {
+      statusEl.textContent = "Could not load your files. Check your connection and refresh.";
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", load);
+  } else {
+    load();
+  }
+})();
+</script>
 </body>
 </html>
