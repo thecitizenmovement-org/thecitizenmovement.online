@@ -313,6 +313,9 @@ app = FastAPI(
     title="Scam Intel API",
     version="3.0.0-phase1.4",
     description="Phase 1 scan backend for Scam Intel v3.0. Binds localhost only.",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 security = HTTPBearer(auto_error=False)
 _scan_semaphore = asyncio.Semaphore(MAX_CONCURRENT_SCANS)
