@@ -1111,6 +1111,7 @@ var GREEK_PHILOSOPHERS = [
          ================================================================ */
       var TABS = [
         { id: "dashboard", label: "My Dashboard" },
+        { id: "inbox", label: "Inbox" },
         { id: "roster", label: "Roster" },
         { id: "contacts", label: "Contacts" },
         { id: "reminders", label: "Reminders" },
@@ -1125,7 +1126,7 @@ var GREEK_PHILOSOPHERS = [
       var state = {
         tab: "dashboard",
         signedIn: false,
-        openReminderCount: 0,
+        openReminderCount: 0, openInboxCount: 0,
         profileFields: null, // cached for autofill strips
       };
 
@@ -1138,7 +1139,8 @@ var GREEK_PHILOSOPHERS = [
             badge = '<span class="tab-count" aria-label="' + state.openReminderCount + ' open reminders">' +
               state.openReminderCount + "</span>";
           }
-          return '<button type="button" class="tab-btn' + (active ? " active" : "") + '" data-tab="' + t.id + '"' +
+          
+        if (t.id === "inbox" && state.openInboxCount > 0) { badge = '<span class="tab-count" aria-label="' + state.openInboxCount + ' unread messages">' + state.openInboxCount + "</span>"; }return '<button type="button" class="tab-btn' + (active ? " active" : "") + '" data-tab="' + t.id + '"' +
             (active ? ' aria-current="page"' : "") + ">" + esc(t.label) + badge + "</button>";
         }).join("");
         html += '<button type="button" class="tab-btn signout-btn" id="signout-btn">Sign out</button>';
@@ -1159,7 +1161,7 @@ var GREEK_PHILOSOPHERS = [
         var content = $("#content");
         content.innerHTML = '<p style="font-size:0.875rem;color:var(--dim)">Loading…</p>';
         var renderers = {
-          dashboard: renderDashboard, roster: renderRoster, contacts: renderContacts,
+          dashboard: renderDashboard, inbox: renderInbox, roster: renderRoster, contacts: renderContacts,
           reminders: renderReminders, notes: renderNotes, templates: renderTemplates,
           addresses: function () { renderWritings("address"); },
           lessons: function () { renderWritings("lesson"); },
@@ -1177,6 +1179,72 @@ var GREEK_PHILOSOPHERS = [
           if (state.signedIn) renderTabs();
         }).catch(function () {});
       }
+    var PRAYER_INBOX_URL = "https://jesrbqrwbacuirwxbkis.supabase.co/functions/v1/prayer-inbox";
+    function inboxCall(action, extra) {
+      return requireSession().then(function (session) {
+        return fetch(PRAYER_INBOX_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + session.access_token },
+          body: JSON.stringify(Object.assign({ action: action }, extra || {}))
+        });
+      }).then(function (res) { return res.json(); }).then(function (body) {
+        if (!body || body.ok !== true) throw new Error((body && body.error) || "inbox error");
+        return body;
+      });
+    }
+    function refreshInboxBadge() {
+      return inboxCall("list").then(function (body) {
+        var rows = body.requests || [];
+        state.openInboxCount = rows.filter(function (r) { return !r.is_read; }).length;
+        if (state.signedIn) renderTabs();
+      }).catch(function () {});
+    }
+    function renderInbox() {
+      var content = $("#content");
+      var ui = renderInbox._ui || {};
+      return inboxCall("list").then(function (body) {
+        var rows = body.requests || [];
+        state.openInboxCount = rows.filter(function (r) { return !r.is_read; }).length;
+        renderTabs();
+        function kindLabel(k) { return k === "prayer" ? "Prayer request" : k === "question" ? "Question" : "Study suggestion"; }
+        function when(s) { try { return new Date(s).toLocaleString(); } catch (e) { return s || ""; } }
+        var html = '<div class="stack-lg">'
+          + '<div><h2 class="section-title">Inbox</h2>'
+          + '<p class="blurb">Prayer requests, questions, and study suggestions sent from the chaplain page — click one to read it. The email is the receipt; this is where they land to be read.</p></div>';
+        if (!rows.length) {
+          html += '<p class="blurb">Nothing here yet. When someone sends a prayer request from the chaplain page, it will appear here.</p>';
+        } else {
+          html += '<ul style="list-style:none;margin:0;padding:0;display:grid;gap:0.75rem">';
+          rows.forEach(function (r) {
+            var open = ui.openId === r.id;
+            html += '<li class="card"><div class="flex-start">'
+              + '<div style="flex:1;min-width:0">'
+              + '<p style="margin:0;font-size:0.875rem;color:var(--dim)">' + esc(kindLabel(r.kind)) + ' — ' + esc(when(r.created_at)) + (r.is_read ? '' : ' — <strong>New</strong>') + '</p>'
+              + '<p style="margin:0.25rem 0 0;font-weight:600">' + esc(r.name ? r.name : 'Anonymous') + '</p>'
+              + (open ? '<p style="margin:0.5rem 0 0;white-space:pre-wrap">' + esc(r.message) + '</p>' : '')
+              + '</div>'
+              + '<button type="button" class="btn-ghost" data-inbox-read="' + esc(r.id) + '">' + (open ? 'Close' : 'Read') + '</button>'
+              + '</div></li>';
+          });
+          html += '</ul>';
+        }
+        html += '</div>';
+        content.innerHTML = html;
+        $$("[data-inbox-read]", content).forEach(function (b) {
+          b.addEventListener("click", function () {
+            var id = b.getAttribute("data-inbox-read");
+            var opening = ui.openId !== id;
+            ui.openId = opening ? id : null;
+            renderInbox._ui = ui;
+            if (opening) {
+              inboxCall("read", { id: id }).catch(function () {}).then(function () { showTab("inbox"); });
+            } else {
+              showTab("inbox");
+            }
+          });
+        });
+      });
+    }
 
       function getProfileFields() {
         if (state.profileFields) return Promise.resolve(state.profileFields);
@@ -1201,7 +1269,7 @@ var GREEK_PHILOSOPHERS = [
         $("#app").classList.remove("hidden");
         renderTabs();
         showTab("dashboard");
-        refreshReminderBadge();
+        refreshReminderBadge(); refreshInboxBadge();
         initSoundtrackAutoplay();
       }
 
