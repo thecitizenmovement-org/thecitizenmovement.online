@@ -44,7 +44,7 @@
   h1,h2,h3,.cond{font-family:"Archivo", system-ui, sans-serif}
   .mono{font-family:"IBM Plex Mono", ui-monospace, monospace}
 
-  /* ---------- Masthead ---------- */
+
   .masthead{
     background:linear-gradient(180deg,#191c21 0%, var(--bg-deep) 100%);
     border-bottom:3px solid var(--burgundy);
@@ -69,7 +69,7 @@
   .role-line{font-size:.85rem;color:var(--muted);text-align:right}
   .role-line strong{color:var(--paper);font-weight:700;letter-spacing:.05em}
 
-  /* ---------- Layout ---------- */
+
   .shell{max-width:1440px;margin:0 auto;display:grid;grid-template-columns:248px 1fr;gap:0;align-items:start}
   .sidebar{
     border-right:1px solid var(--line-soft);
@@ -98,7 +98,7 @@
   .view-head h2{font-size:1.45rem;font-weight:800;letter-spacing:.02em;margin:0}
   .view-head .sub{color:var(--muted);font-size:.9rem}
 
-  /* ---------- Panels & tiles ---------- */
+
   .grid{display:grid;gap:1rem}
   .grid.tiles{grid-template-columns:repeat(4,1fr)}
   .grid.two{grid-template-columns:1fr 1fr}
@@ -122,14 +122,14 @@
   .panel.flush > h3,.panel.flush .p-sub{padding-left:1.2rem;padding-right:1.2rem}
   .panel.flush > h3{padding-top:1.1rem}
 
-  /* status chips */
+
   .chip{display:inline-block;font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:.18rem .5rem;border-radius:3px;border:1px solid var(--line);color:var(--ice);background:var(--panel-3);white-space:nowrap}
   .chip.submitted{border-color:#4a5a48;color:#a9c6a4;background:#232a22}
   .chip.declined{border-color:var(--burgundy-2);color:var(--red-dim);background:#2b1d21}
   .chip.prepared{border-color:#5d543a;color:#d3c28d;background:#2a271e}
   .chip.pending{border-color:var(--line);color:var(--muted)}
 
-  /* tables */
+
   table{width:100%;border-collapse:collapse;font-size:.94rem}
   th{font-family:"Archivo",sans-serif;font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);text-align:left;padding:.6rem .9rem;border-bottom:1px solid var(--line);background:var(--panel-2)}
   td{padding:.62rem .9rem;border-bottom:1px solid var(--line-soft);vertical-align:top;color:var(--ice)}
@@ -138,7 +138,7 @@
   td .row-note{display:block;font-size:.8rem;color:var(--muted);font-family:"Source Sans 3",sans-serif}
   .tbl-wrap{overflow-x:auto}
 
-  /* lists */
+
   ul.spec{list-style:none;margin:0;padding:0}
   ul.spec li{padding:.5rem 0 .5rem 1.6rem;position:relative;border-bottom:1px solid var(--line-soft);color:var(--ice)}
   ul.spec li:last-child{border-bottom:none}
@@ -217,7 +217,7 @@
     .grid.two{grid-template-columns:1fr}
     .kv{grid-template-columns:1fr}
     .kv dt{padding-top:.55rem}
-    /* tables become stacked records */
+
     table,thead,tbody,tr,td{display:block;width:100%}
     thead{display:none}
     tr{border-bottom:1px solid var(--line);padding:.45rem 0}
@@ -233,7 +233,7 @@
   }
 </style>
 <style>
-  /* ---------- sign-in gate (Phase 2) ---------- */
+
   .hidden { display: none !important; }
   .gate-boot { max-width: 28rem; margin: 0 auto; min-height: 70vh; display: flex; align-items: center; justify-content: center; color: var(--muted); }
   .gate-signin { max-width: 28rem; margin: 0 auto; min-height: 70vh; display: flex; flex-direction: column; justify-content: center; padding: 2.5rem 1rem; }
@@ -254,9 +254,6 @@
 
 <div id="boot" class="gate-boot"><p>Checking your sign-in…</p></div>
 
-<!-- Sign-in gate: the ONLY thing shown until a live session exists.
-     Shared portal: no email prefilled, no credentials stored in this page.
-     Each person signs in with their own account. -->
 <main id="signin" class="gate-signin hidden">
   <div class="gate-card">
     <div class="gate-org">The United Citizens of America</div>
@@ -341,7 +338,7 @@
 
   <main class="main">
 
-    <!-- ================= DASHBOARD ================= -->
+
     <section class="view active" id="view-dashboard">
       <div class="view-head"><h2>Dashboard</h2><span class="sub">Private CMS · current assignment</span></div>
 
@@ -399,7 +396,7 @@
         <h3>Recent activity</h3>
         <p class="p-sub">Only activity recorded in the handoff itself. No workspace activity exists yet.</p>
         <ul class="spec">
-          <li><span class="mono">2026-11-14</span> — Auditor CMS design &amp; implementation handoff v1.0 received. Status: draft only, awaiting Hana evaluation and Founder direction.</li>
+          <li><span class="mono">2026-11-14</span> — Auditor CMS design &amp; implementation handoff v1.0 received. Status: draft only, awaiting Founder direction.</li>
           <li><span class="mono">2026-11-14</span> — Phase 1 (private CMS visual design) opened as the current assignment.</li>
           <li><span class="mono">2026-11-14</span> — Filings register corrected per the Nov 14 reconciliation: all four DOJ party mappings recorded (866863-RTC is Shenandoah Middleton, not William Smith; 866242-MHH names the Kootenai County Correctional Facility); Bar receipt gap noted (forms dated Nov 12, 2026 — no Bar receipt on file).</li>
           <li><span class="mono">2026-11-17</span> — Full Gmail sweep filed: 59 case records kept from a 99-message sweep, 108 attachment files on disk, 3 machine transcripts. Case timeline, complaints register, transcripts, and photo index added to this console — see Case Timeline, Complaints, Transcripts &amp; Evidence.</li>
@@ -409,7 +406,7 @@
       </div>
     </section>
 
-    <!-- ================= REPORTS ================= -->
+
     <section class="view" id="view-reports">
       <div class="view-head"><h2>Reports</h2><span class="sub">Drafts, revisions, and publication review</span></div>
       <div class="callout"><strong>Standing rule</strong><p>All writing fields start empty. Nothing is ever written in the auditor's voice by the system. Publishing requires express authorization.</p></div>
@@ -449,7 +446,7 @@
       </div>
     </section>
 
-    <!-- ================= FINDINGS ================= -->
+
     <section class="view" id="view-findings">
       <div class="view-head"><h2>Findings</h2><span class="sub">Finding records with sources and review status</span></div>
       <div class="grid two">
@@ -475,7 +472,7 @@
       <div class="empty"><strong>No finding records yet</strong></div>
     </section>
 
-    <!-- ================= FILINGS ================= -->
+
     <section class="view" id="view-filings">
       <div class="view-head"><h2>Filings</h2><span class="sub">Register of record — numbers preserved exactly as supplied</span></div>
       <div class="callout"><strong>Data rule</strong><p>Record numbers are preserved exactly. Missing dates and reference numbers are shown as not supplied — never filled in. Founder verification is required before any publication.</p></div>
@@ -541,7 +538,7 @@
       </div>
     </section>
 
-    <!-- ================= EVIDENCE ================= -->
+
     <section class="view" id="view-evidence">
       <div class="view-head"><h2>Evidence Files</h2><span class="sub">Originals preserved · working copies for use</span></div>
       <div class="callout"><strong>Originals are immutable</strong><p>Original evidence files are never overwritten. Work is done on working copies; source provenance and file hashes are recorded for every item.</p></div>
@@ -602,7 +599,7 @@
       <div class="panel"><h3>Fax archive — Feb 4 – Nov 14, 2026</h3><p class="p-sub">895 sent faxes · 900 files · source: Fax.Plus account. Every document hash-verified (SHA-256). <a href="#fax-timeline">Open the fax timeline in the Archive section</a> — date, time, fax number from and to, and a confirmation note with the filed copy for every fax.</p></div>
     </section>
 
-    <!-- ================= REDACTION ================= -->
+
     <section class="view" id="view-redaction">
       <div class="view-head"><h2>Redaction Desk</h2><span class="sub">Sanitized copies for authorized distribution</span></div>
       <div class="grid two">
@@ -634,7 +631,7 @@
       </div>
     </section>
 
-    <!-- ================= SHARING ================= -->
+
     <section class="view" id="view-sharing">
       <div class="view-head"><h2>File Sharing</h2><span class="sub">Controlled, logged, least-privilege</span></div>
       <div class="grid two">
@@ -662,7 +659,7 @@
       <div class="empty"><strong>No active shares</strong>Nothing has been shared from this workspace.</div>
     </section>
 
-    <!-- ================= INBOX ================= -->
+
     <section class="view" id="view-inbox">
       <div class="view-head"><h2>Private Inbox</h2><span class="sub">Correspondence under the auditor's control</span></div>
       <div class="callout"><strong>Control rule</strong><p>Contact remains under the auditor's control at all times. No private contact route is published from this console, and none is opened until the Founder decides the private contact route.</p></div>
@@ -676,7 +673,7 @@
       <div class="empty"><strong>Inbox is empty</strong>No correspondence on record.</div>
     </section>
 
-    <!-- ================= ARCHIVE ================= -->
+
     <section class="view" id="view-archive">
       <div class="view-head"><h2>Archive</h2><span class="sub">Private · no public access</span></div>
       <div class="grid two">
@@ -1607,9 +1604,9 @@
       <div class="callout"><strong>Publication rule</strong><p>Archive material is published only through explicit auditor-controlled publishing. There is no public access to this archive.</p></div>
     </section>
 
-    <!-- ================= SETTINGS ================= -->
-    
-    <!-- ================= CASE TIMELINE (full sweep, Nov 17, 2026) ================= -->
+
+
+
     <section class="view" id="view-casetimeline">
       <div class="view-head"><h2>Case Timeline</h2><span class="sub">Case audit record — Nov 9–16, 2026 · 59 case records from a 99-message sweep</span></div>
       <div class="callout"><strong>Conversation stays off this page</strong><p>Conversation between her and Josh is not on this page. This is her case audit workspace — case documents, demands, notices, filings, evidence, and transcripts. She decides what to publish; nothing here is framed as published.</p></div>
@@ -1695,7 +1692,6 @@
     </section>
 
 
-    <!-- ================= TIMELINE (all items, Nov 17, 2026) ================= -->
     <section class="view" id="view-timeline">
       <div class="view-head"><h2>Timeline</h2><span class="sub">Every item in this workspace, in date order — Feb 4 – Nov 16, 2026 · 101 entries · plus Complete Packet chronology (Nov 18)</span></div>
       <div class="callout"><strong>Conversation stays off this page</strong><p>Conversation between her and Josh is not on this page. This timeline lists only the same allowed set as the Case Timeline: case documents, demands, notices, filings, evidence, transcripts, and fax batches. She decides what to publish; nothing here is framed as published.</p></div>
@@ -1884,7 +1880,6 @@
     </section>
 
 
-    <!-- ================= INDEX (all files, Nov 17, 2026) ================= -->
     <section class="view" id="view-index">
       <div class="view-head"><h2>Index</h2><span class="sub">Every file in this workspace — 126 files</span></div>
       <div class="callout"><strong>Complete file list</strong><p>Every file in this workspace, grouped by folder, each linked to its location in the thecitizenmovement.online repo under auditor-files/shannon-sweep/. This list is taken from the Nov 17, 2026 upload list — 125 files, each appearing once — plus the complete packet added Nov 18, 2026 — 126 files in all. The fax archive files (895 sent faxes, 900 files) are listed separately in the Archive tab, not here.</p></div>
@@ -2128,7 +2123,7 @@
       </div>
     </section>
 
-    <!-- ================= COMPLAINTS ================= -->
+
     <section class="view" id="view-complaints">
       <div class="view-head"><h2>Complaints &amp; Demands</h2><span class="sub">Filings and demands as cataloged — her account</span></div>
       <div class="panel flush">
@@ -2192,7 +2187,7 @@
   </div>
 </section>
 
-    <!-- ================= TRANSCRIPTS & EVIDENCE ================= -->
+
     <section class="view" id="view-transcripts">
       <div class="view-head"><h2>Transcripts &amp; Evidence</h2><span class="sub">Machine transcripts · photos · sweep files</span></div>
       <div class="callout"><strong>Machine transcripts</strong><p>All three transcripts below were produced by machine (Whisper, small model) from the audio tracks.</p></div>
@@ -2390,7 +2385,7 @@
       </div>
     </section>
 
-    <!-- ================= AUDIT LOG ================= -->
+
     <section class="view" id="view-auditlog">
       <div class="view-head"><h2>Audit Log</h2><span class="sub">Protected from unauthorized alteration</span></div>
       <div class="panel">
@@ -2404,7 +2399,7 @@
       <div class="empty"><strong>No events recorded</strong>No events recorded yet. Entries begin when the workspace is used.</div>
     </section>
 
-    <!-- ================= HELP ================= -->
+
     <section class="view" id="view-help">
       <div class="view-head"><h2>Help &amp; Support</h2><span class="sub">Build sequence, authority, and open decisions</span></div>
       <div class="grid two">
@@ -2427,7 +2422,7 @@
             <h3>Design authority</h3>
             <dl class="kv">
               <dt>Visual direction</dt><dd>ChatGPT first draft</dd>
-              <dt>Technical evaluation</dt><dd>Hana</dd>
+              <dt>Technical evaluation</dt><dd>Internal review</dd>
               <dt>Final authority</dt><dd>Founder</dd>
             </dl>
           </div>
@@ -2478,8 +2473,7 @@
 </script>
 <script>
   (function(){
-    /* Cross-tab links inside the Timeline and Index tabs: clicking one opens
-       the tab that holds the record (same behavior as the sidebar buttons). */
+
     document.querySelectorAll('a[data-goto]').forEach(function(a){
       a.addEventListener('click', function(e){
         e.preventDefault();
@@ -2499,11 +2493,7 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-  /* ---------------- sign-in gate (Phase 2) ----------------
-     Supabase Auth (email + password). Until a live session exists,
-     only the sign-in screen shows. No credentials are stored in
-     this page and no email is prefilled: the portal is shared, so
-     each person signs in with their own account. */
+
   (function () {
     var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
     var SUPABASE_ANON_KEY =
@@ -2552,25 +2542,17 @@
     });
     var out = $("#signout-btn");
     if (out) out.addEventListener("click", function () {
-      sb.auth.signOut().then(function () { /* onAuthStateChange shows the gate */ });
+      sb.auth.signOut().then(function () {  });
     });
   })();
 </script>
 <script>
-  /* ---------------- audio clip upload ----------------
-     Uploads an audio file to the private Supabase Storage bucket
-     "member-documents" (the same bucket the Foundry toolkit loads
-     from), under audio/<signed-in user id>/<timestamp>-<name>.
-     Uses the signed-in session — the button does nothing until a
-     session exists. Playback uses a 1-hour signed URL.
-     Storage note: the bucket's policies must allow authenticated
-     users to upload into their own audio/ folder, or the upload
-     fails with the policy error shown in the status line. */
+
   (function () {
     var SUPABASE_URL = "https://jesrbqrwbacuirwxbkis.supabase.co";
     var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Implc3JicXJ3YmFjdWlyd3hia2lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTU2OTcsImV4cCI6MjEwNzIzMTY5N30._LCnNC2JIjijt6n0u3kKestF5G2Zsjju4hEv1d1tImc";
     var BUCKET = "member-documents";
-    var MAX_BYTES = 50 * 1024 * 1024; /* 50 MB per clip */
+    var MAX_BYTES = 50 * 1024 * 1024;
     var AUDIO_EXTS = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".opus", ".flac", ".wma"];
     var input = document.getElementById("audio-file");
     var chooseBtn = document.getElementById("audio-choose-btn");
@@ -2627,15 +2609,7 @@
     });
   })();
 </script>
-<!-- ============================================================
-     CMS PUBLISH — owner gatekeeping (insert before </body>)
-     The owner of this CMS — and only the owner — can make their own
-     files public, from inside their own CMS. Nobody else publishes
-     for them. A warning shows before anything goes public.
-     Set CMS_SLUG to "shannon", "robert", or "founder" for the page.
-     Requires the cms-publish edge function (not deployed yet — the
-     panel says so plainly until it is).
-     ============================================================ -->
+
 <style>
   .pub-panel { border: 2px solid #8a6d1b; border-radius: 10px; padding: 18px; margin: 18px 0; background: #141414; color: #f5f5f5; }
   .pub-panel h3 { margin: 0 0 6px; font-size: 20px; }
